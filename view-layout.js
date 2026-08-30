@@ -50,9 +50,9 @@
     if (!separation) return;
     const n = puzzleSize();
     const table = {
-      original: {3:110, 4:98,  5:90},
-      front:    {3:92,  4:78,  5:66},
-      layers:   {3:118, 4:106, 5:96}
+      original: {3:110, 4:98, 5:90},
+      front:    {3:92,  4:78, 5:66},
+      layers:   {3:96,  4:96, 5:96}
     };
     const value = table[kind]?.[n];
     if (!value) return;
@@ -112,15 +112,14 @@
     setDepth(kind);
 
     if (kind === 'original') {
-      // Diagonal 45°-style card stack: every board steps both upward and sideways
-      // behind the previous one, matching the intended original-view composition.
-      driveRotation(-42, -38);
+      // Diagonal card stack, mirrored to the opposite side from the previous preset.
+      driveRotation(-42, 38);
     } else if (kind === 'front') {
       driveRotation(0, 0);
     } else {
-      // Layer stack: boards remain centered on the same vertical axis and are
-      // separated mainly up/down, with essentially no sideways drift.
-      driveRotation(-74, 0);
+      // Layers = front view tilted upward only. With positive X rotation the
+      // closest layer (Layer 1) projects above the following layers.
+      driveRotation(60, 0);
     }
 
     markPreset(kind);
