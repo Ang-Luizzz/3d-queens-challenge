@@ -50,9 +50,9 @@
     if (!separation) return;
     const n = puzzleSize();
     const table = {
-      original: {3:112, 4:100, 5:90},
+      original: {3:110, 4:98,  5:90},
       front:    {3:92,  4:78,  5:66},
-      layers:   {3:116, 4:104, 5:94}
+      layers:   {3:118, 4:106, 5:96}
     };
     const value = table[kind]?.[n];
     if (!value) return;
@@ -90,7 +90,6 @@
         bubbles:true, pointerId, clientX:x0 + dx, clientY:y0 + dy, pointerType:'mouse'
       }));
     } catch (_) {
-      // Fallback: at least preserve the intended visual preset.
       cube.style.transform = `rotateX(${targetX}deg) rotateY(${targetY}deg) scale(.86)`;
     } finally {
       try { stage.setPointerCapture = oldSetCapture; } catch (_) {}
@@ -113,14 +112,15 @@
     setDepth(kind);
 
     if (kind === 'original') {
-      // Side-card composition: depth is visible horizontally and layers read separately.
-      driveRotation(-10, -52);
+      // Diagonal 45°-style card stack: every board steps both upward and sideways
+      // behind the previous one, matching the intended original-view composition.
+      driveRotation(-42, -38);
     } else if (kind === 'front') {
       driveRotation(0, 0);
     } else {
-      // Diagonal layer stack: the depth axis projects roughly 45° across the screen,
-      // so every board visibly steps behind the previous one instead of forming a vertical pile.
-      driveRotation(-45, -35);
+      // Layer stack: boards remain centered on the same vertical axis and are
+      // separated mainly up/down, with essentially no sideways drift.
+      driveRotation(-74, 0);
     }
 
     markPreset(kind);
