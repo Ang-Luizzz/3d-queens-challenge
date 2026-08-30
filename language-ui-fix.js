@@ -2,17 +2,14 @@
   const style = document.createElement('style');
   style.textContent = `
     .custom-size-toggle{
-      padding-left:8px!important;
-      padding-right:8px!important;
-      font-size:11px!important;
-      letter-spacing:-.015em;
+      font-size:inherit!important;
+      letter-spacing:normal!important;
+      padding-left:6px!important;
+      padding-right:6px!important;
       white-space:nowrap;
     }
     .custom-size-toggle small{
       letter-spacing:0;
-    }
-    @media(max-width:430px){
-      .custom-size-toggle{font-size:10px!important;padding-left:6px!important;padding-right:6px!important}
     }
   `;
   document.head.appendChild(style);
@@ -21,26 +18,44 @@
     return document.documentElement.lang === 'en';
   }
 
-  function setControlTitle(controlSelector, value){
-    const control = document.querySelector(controlSelector);
-    const block = control?.closest('.control-block');
-    const title = block?.querySelector('.control-title');
-    if (title && title.textContent !== value) title.textContent = value;
+  function aidsTitle(){
+    return document.querySelector('.assist-control .control-title');
   }
 
-  function applyCorrectLabels(){
-    const en = isEnglish();
-    setControlTitle('#original', en ? 'View' : 'Vista');
-    setControlTitle('#separation', en ? 'Layer spacing' : 'Separación de capas');
-    setControlTitle('#showAttacked', en ? 'Aids' : 'Ayudas');
-
-    const original = document.getElementById('original');
-    if (original && original.textContent.trim() !== 'Diagonal') original.textContent = 'Diagonal';
+  function applyAidsTitle(){
+    const title = aidsTitle();
+    if (!title) return;
+    const expected = isEnglish() ? 'Aids' : 'Ayudas';
+    if (title.textContent !== expected) title.textContent = expected;
   }
 
-  const observer = new MutationObserver(() => queueMicrotask(applyCorrectLabels));
-  observer.observe(document.documentElement, {attributes:true, attributeFilter:['lang']});
+  // The aids block is moved out of .top-controls after initial load. Keep its
+  // own label tied to the current language rather than DOM position.
+  function bindAidsGuard(){
+    const title = aidsTitle();
+    if (!title || title.dataset.languageGuard === 'true') return;
+    title.dataset.languageGuard = 'true';
+    const observer = new MutationObserver(() => queueMicrotask(applyAidsTitle));
+    observer.observe(title, {childList:true, characterData:true, subtree:true});
+  }
 
-  document.addEventListener('click', () => queueMicrotask(applyCorrectLabels));
-  queueMicrotask(applyCorrectLabels);
+  const langObserver = new MutationObserver(() => {
+    queueMicrotask(() => {
+      applyAidsTitle();
+      bindAidsGuard();
+    });
+  });
+  langObserver.observe(document.documentElement, {attributes:true, attributeFilter:['lang']});
+
+  document.addEventListener('click', () => {
+    queueMicrotask(() => {
+      applyAidsTitle();
+      bindAidsGuard();
+    });
+  });
+
+  queueMicrotask(() => {
+    applyAidsTitle();
+    bindAidsGuard();
+  });
 })();
