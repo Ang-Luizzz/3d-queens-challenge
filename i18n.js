@@ -9,10 +9,11 @@
         'También ataca directamente entre capas y por diagonales que atraviesan el cubo.',
         'Puedes colocar una reina en cualquier casilla; las ayudas solo resaltan información y nunca bloquean movimientos.'
       ],
-      cells: 'casillas', view: 'Vista', perspective: 'Perspectiva', front: 'Frente', original: 'Vista original',
+      cells: 'casillas', view: 'Vista', perspective: 'Perspectiva', front: 'Frente', back: 'Atrás', original: 'Vista original',
       spacing: 'Separación de capas', aids: 'Ayudas', attacked: 'Casillas atacadas', conflicts: 'Reinas en conflicto',
       layers: 'Capas', layer: 'Capa', top: 'Arriba', bottom: 'Abajo', reset: 'Reiniciar', check: 'Verificar intento',
       unchecked: 'Sin verificar', correct: 'Correcto.', incorrect: 'Incorrecto.',
+      zoomOut: 'Alejar', zoomIn: 'Acercar', center: 'Centrar',
       sizeAria: 'Tamaño del puzzle', layerAria: 'Seleccionar capa', boardAria: 'Tablero tridimensional', spacingAria: 'Separación entre capas'
     },
     en: {
@@ -24,10 +25,11 @@
         'It also attacks directly between layers and along diagonals that pass through the cube.',
         'You may place a queen on any square; the optional aids only highlight information and never block moves.'
       ],
-      cells: 'squares', view: 'View', perspective: 'Perspective', front: 'Front', original: 'Original view',
+      cells: 'squares', view: 'View', perspective: 'Perspective', front: 'Front', back: 'Back', original: 'Original view',
       spacing: 'Layer spacing', aids: 'Aids', attacked: 'Attacked squares', conflicts: 'Queens in conflict',
       layers: 'Layers', layer: 'Layer', top: 'Top', bottom: 'Bottom', reset: 'Reset', check: 'Check attempt',
       unchecked: 'Not checked', correct: 'Correct.', incorrect: 'Incorrect.',
+      zoomOut: 'Zoom out', zoomIn: 'Zoom in', center: 'Center',
       sizeAria: 'Puzzle size', layerAria: 'Select layer', boardAria: 'Three-dimensional board', spacingAria: 'Spacing between layers'
     }
   };
@@ -84,8 +86,7 @@
       textNode = document.createTextNode('');
       el.appendChild(textNode);
     }
-    const next = value;
-    if (textNode.nodeValue.trim() !== next) textNode.nodeValue = next;
+    if (textNode.nodeValue.trim() !== value) textNode.nodeValue = value;
   }
 
   function translateDynamic() {
@@ -133,12 +134,20 @@
 
     setButton('perspective', L.perspective);
     setButton('front', L.front);
+    setButton('back', L.back);
     setButton('original', L.original);
     setButton('showAttacked', L.attacked);
     setButton('showConflicts', L.conflicts);
     setText('.rail-title', L.layers);
     setButton('resetPieces', L.reset);
     setButton('check', L.check);
+
+    const zoomOut = document.getElementById('zoomOut');
+    const zoomIn = document.getElementById('zoomIn');
+    const center = document.getElementById('centerView');
+    if (zoomOut) { zoomOut.setAttribute('aria-label', L.zoomOut); zoomOut.title = L.zoomOut; }
+    if (zoomIn) { zoomIn.setAttribute('aria-label', L.zoomIn); zoomIn.title = L.zoomIn; }
+    if (center) { center.setAttribute('aria-label', L.center); center.title = L.center; }
 
     document.querySelector('.size-strip')?.setAttribute('aria-label', L.sizeAria);
     document.getElementById('layerRail')?.setAttribute('aria-label', L.layerAria);
