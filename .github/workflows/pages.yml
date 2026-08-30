@@ -42,10 +42,11 @@ jobs:
           view_js = '<script src="./view-layout.js"></script>'
           assist_js = '<script src="./assist-layout.js"></script>'
           overlays_js = '<script src="./overlays.js"></script>'
+          polish_js = '<script src="./ui-polish.js"></script>'
           for marker in (spacing_css, view_css):
               if marker not in s:
                   s = s.replace('</head>', marker + '\n</head>')
-          for marker in (i18n_js, interaction_js, view_js, assist_js, overlays_js):
+          for marker in (i18n_js, interaction_js, view_js, assist_js, overlays_js, polish_js):
               if marker not in s:
                   s = s.replace('</body>', marker + '\n</body>')
           p.write_text(s, encoding='utf-8')
