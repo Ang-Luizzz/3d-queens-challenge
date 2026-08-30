@@ -35,9 +35,12 @@ jobs:
           from pathlib import Path
           p = Path('_site/index.html')
           s = p.read_text(encoding='utf-8')
-          marker = '<script src="./i18n.js"></script>'
-          if marker not in s:
-              s = s.replace('</body>', marker + '\n</body>')
+          css_marker = '<link rel="stylesheet" href="./spacing-fix.css">'
+          js_marker = '<script src="./i18n.js"></script>'
+          if css_marker not in s:
+              s = s.replace('</head>', css_marker + '\n</head>')
+          if js_marker not in s:
+              s = s.replace('</body>', js_marker + '\n</body>')
           p.write_text(s, encoding='utf-8')
           PY
 
