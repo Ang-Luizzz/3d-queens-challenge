@@ -35,15 +35,17 @@ jobs:
           from pathlib import Path
           p = Path('_site/index.html')
           s = p.read_text(encoding='utf-8')
-          css_marker = '<link rel="stylesheet" href="./spacing-fix.css">'
-          i18n_marker = '<script src="./i18n.js"></script>'
-          interaction_marker = '<script src="./interaction-fix.js"></script>'
-          if css_marker not in s:
-              s = s.replace('</head>', css_marker + '\n</head>')
-          if i18n_marker not in s:
-              s = s.replace('</body>', i18n_marker + '\n</body>')
-          if interaction_marker not in s:
-              s = s.replace('</body>', interaction_marker + '\n</body>')
+          spacing_css = '<link rel="stylesheet" href="./spacing-fix.css">'
+          view_css = '<link rel="stylesheet" href="./view-layout.css">'
+          i18n_js = '<script src="./i18n.js"></script>'
+          interaction_js = '<script src="./interaction-fix.js"></script>'
+          view_js = '<script src="./view-layout.js"></script>'
+          for marker in (spacing_css, view_css):
+              if marker not in s:
+                  s = s.replace('</head>', marker + '\n</head>')
+          for marker in (i18n_js, interaction_js, view_js):
+              if marker not in s:
+                  s = s.replace('</body>', marker + '\n</body>')
           p.write_text(s, encoding='utf-8')
           PY
 
