@@ -1,19 +1,18 @@
-/* Extra breathing room and clearer active-layer editing. */
+/* Breathing room + clearer inactive layers. */
 .scene{
   perspective:1750px;
-  transform:scale(.96);
+  transform:none !important;
   transform-origin:center center;
 }
 
-/* Inactive layers stay clearly readable so their queens remain visually
-   anchored to boards instead of appearing to float in space. */
-.plane.inactive .cell.light{background:rgba(231,223,208,.28)}
-.plane.inactive .cell.dark{background:rgba(111,126,145,.24)}
-.plane.inactive .cell::after{border-color:rgba(255,255,255,.11)}
+/* Inactive layers remain visually connected to their queens. */
+.plane.inactive .cell.light{background:rgba(231,223,208,.42)}
+.plane.inactive .cell.dark{background:rgba(111,126,145,.36)}
+.plane.inactive .cell::after{border-color:rgba(255,255,255,.15)}
 .plane.inactive .queen{
-  opacity:.96;
-  transform:scale(.94);
-  filter:drop-shadow(0 1px 2px rgba(0,0,0,.46));
+  opacity:1;
+  transform:scale(.96);
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,.48));
 }
 .plane.active{
   box-shadow:
@@ -22,67 +21,23 @@
 }
 
 @media(max-width:850px){
-  .stage{min-height:670px}
-  .scene{transform:scale(.92)}
+  .scene{inset:10px}
 }
 
 @media(max-width:590px){
-  :root{--plane-size:min(230px,64vw)}
-
+  :root{--plane-size:min(246px,72vw)}
   .board-layout{
     display:block;
     position:relative;
   }
-
   .stage{
     width:100%;
-    min-height:620px;
   }
-
-  /* Shift the cube slightly right so the vertical layer rail does not cover it. */
   .scene{
-    inset:14px;
-    transform:translateX(28px) scale(.86);
-  }
-
-  .layer-rail{
-    position:absolute;
-    z-index:30;
-    left:8px;
-    top:8px;
-    width:96px;
-    padding:7px;
-    gap:6px;
-    background:rgba(8,17,31,.84);
-    backdrop-filter:blur(8px);
-    box-shadow:0 8px 24px rgba(0,0,0,.22);
-  }
-
-  .rail-title{
-    text-align:center;
-    margin-bottom:1px;
-  }
-
-  .layer-btn{
-    min-height:50px;
-    padding:7px 8px;
-  }
-
-  .layer-btn .layer-line{gap:6px}
-  .layer-name{
-    font-size:11px;
-    white-space:nowrap;
-  }
-  .layer-pos{
-    margin-left:16px;
-    font-size:8px;
-    white-space:nowrap;
+    inset:10px;
   }
 }
 
 @media(max-width:360px){
-  :root{--plane-size:min(210px,62vw)}
-  .scene{transform:translateX(24px) scale(.83)}
-  .layer-rail{width:90px}
-  .layer-name{font-size:10px}
+  :root{--plane-size:min(224px,70vw)}
 }
