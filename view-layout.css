@@ -53,11 +53,15 @@
   margin-top:10px !important;
 }
 
-/* Camera wrapper is independent from cube rotation. */
+/* Camera wrapper is independent from cube rotation. It keeps a stable square
+   frame, while grid centering keeps rectangular X×Y custom boards visually
+   centered instead of anchoring them to the frame's top-left corner. */
 .camera-transform{
   width:var(--plane-size);
   height:var(--plane-size);
   position:relative;
+  display:grid;
+  place-items:center;
   transform-style:preserve-3d;
   transform-origin:center center;
   will-change:transform;
