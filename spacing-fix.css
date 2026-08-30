@@ -1,0 +1,53 @@
+/* Extra breathing room for the 3D board without changing the game layout. */
+.scene{
+  perspective:1750px;
+  transform:scale(.96);
+  transform-origin:center center;
+}
+
+.plane.inactive .cell.light{background:rgba(231,223,208,.24)}
+.plane.inactive .cell.dark{background:rgba(111,126,145,.22)}
+.plane.inactive .cell::after{border-color:rgba(255,255,255,.09)}
+
+@media(max-width:850px){
+  .stage{min-height:670px}
+  .scene{transform:scale(.92)}
+}
+
+@media(max-width:590px){
+  :root{--plane-size:min(230px,64vw)}
+
+  .board-layout{
+    display:block;
+    position:relative;
+  }
+
+  .stage{
+    width:100%;
+    min-height:620px;
+  }
+
+  .scene{
+    inset:14px;
+    transform:scale(.86);
+  }
+
+  .layer-rail{
+    position:absolute;
+    z-index:30;
+    left:8px;
+    top:8px;
+    width:72px;
+    padding:7px;
+    gap:6px;
+    background:rgba(8,17,31,.82);
+    backdrop-filter:blur(8px);
+    box-shadow:0 8px 24px rgba(0,0,0,.22);
+  }
+
+  .rail-title{text-align:center}
+  .layer-btn{min-height:49px;padding:7px 6px}
+  .layer-btn .layer-line{gap:5px}
+  .layer-name{font-size:10px}
+  .layer-pos{margin-left:15px;font-size:8px}
+}
