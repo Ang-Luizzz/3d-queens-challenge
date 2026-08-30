@@ -1,0 +1,25 @@
+/* View presets + controls placement. Keeps the board as the visual focus. */
+.actionbar.actionbar-top{
+  margin:0 0 10px;
+}
+
+/* Give each named view a slightly different visual treatment. */
+.stage.view-layers .plane.inactive{
+  opacity:.78;
+}
+.stage.view-original .plane.inactive{
+  opacity:.72;
+}
+.stage.view-front .plane.inactive .cell.light,
+.stage.view-front .plane.inactive .cell.dark{
+  background:rgba(120,135,155,.055);
+}
+.stage.view-front .plane.inactive{
+  opacity:.32;
+}
+
+@media(max-width:590px){
+  .actionbar.actionbar-top{
+    margin-bottom:9px;
+  }
+}
