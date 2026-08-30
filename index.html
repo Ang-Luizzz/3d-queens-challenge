@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<title>Reinas 3D — Reto ciego</title>
+<style>
+:root{--bg:#0b1220;--panel:#101a2d;--panel2:#16243f;--text:#f7f9ff;--muted:#94a6c1;--border:#2a3b5d;--accent:#6d8cff;--ok:#22c55e;--bad:#f43f5e;--plane-size:320px}
+*{box-sizing:border-box}html,body{background:var(--bg)}body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);background:radial-gradient(circle at 8% 0%,rgba(109,140,255,.17),transparent 30%),radial-gradient(circle at 92% 8%,rgba(139,92,246,.13),transparent 25%),linear-gradient(180deg,#0b1220,#0d1628 45%,#0b1220)}button,input{font:inherit}.app{width:min(1080px,100%);margin:0 auto;padding:18px 12px 46px}
+.hero{padding:18px;border:1px solid var(--border);border-radius:20px;background:linear-gradient(135deg,rgba(255,255,255,.05),rgba(255,255,255,.015))}.eyebrow{font-size:10px;font-weight:850;letter-spacing:.13em;text-transform:uppercase;color:#adbeff}h1{margin:5px 0 8px;font-size:clamp(28px,6.5vw,44px);line-height:1.02;letter-spacing:-.04em}.hero p{margin:0;max-width:770px;color:var(--muted);font-size:13px;line-height:1.55}.blind-note{margin-top:10px;padding:10px 12px;border-left:3px solid var(--accent);color:#cdd8ea;font-size:12px;line-height:1.5}
+.setup{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin-top:14px}.levels{display:flex;gap:8px;flex-wrap:wrap}.btn{min-height:44px;border-radius:12px;padding:10px 14px;border:1px solid var(--border);background:var(--panel);color:var(--text);font-weight:800;touch-action:manipulation}.btn.active{background:linear-gradient(135deg,#314f9b,#5d4fc2);border-color:#7891ef;outline:2px solid rgba(109,140,255,.22)}.btn.primary{background:linear-gradient(135deg,#416be0,#7458dc);border-color:#667fe5}.btn.ghost{background:rgba(255,255,255,.025)}.actions{display:flex;gap:8px;flex-wrap:wrap}
+.workspace{margin-top:14px;border:1px solid var(--border);border-radius:20px;padding:14px;background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.015))}.workspace-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap}.workspace-title{font-size:19px;font-weight:850;letter-spacing:-.025em}.workspace-sub{font-size:11px;line-height:1.48;color:var(--muted);max-width:650px;margin-top:3px}
+.view-controls{display:grid;gap:10px;margin-top:12px}.control-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.control-label{width:108px;flex:0 0 108px;font-size:11px;font-weight:800;color:#c9d5e8}.view-buttons,.layer-buttons{display:flex;gap:7px;flex-wrap:wrap;min-width:0}.small-btn{min-height:40px;border-radius:10px;padding:8px 11px;border:1px solid var(--border);background:rgba(255,255,255,.025);color:var(--text);font-weight:750;font-size:12px}.small-btn.active{border-color:#7891ef;background:rgba(109,140,255,.16);color:#dfe7ff}.range-wrap{flex:1;min-width:190px;display:flex;align-items:center;gap:10px}input[type="range"]{width:100%;accent-color:var(--accent)}.range-value{min-width:54px;text-align:right;font-size:11px;color:var(--muted)}.mode-status{margin-left:auto;font-size:11px;color:var(--muted)}
+.stage{position:relative;margin-top:12px;min-height:690px;border:1px solid var(--border);border-radius:18px;overflow:hidden;touch-action:none;background:radial-gradient(circle at 50% 48%,rgba(255,255,255,.045),transparent 39%),linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,.008))}.stage-tip{position:absolute;left:12px;top:12px;z-index:20;padding:8px 10px;border-radius:11px;border:1px solid rgba(255,255,255,.08);background:rgba(11,18,32,.74);color:var(--muted);font-size:11px;line-height:1.4;backdrop-filter:blur(7px)}.scene{position:absolute;inset:0;display:grid;place-items:center;perspective:1500px;perspective-origin:50% 50%}.cube{width:var(--plane-size);height:var(--plane-size);position:relative;transform-style:preserve-3d;transform-origin:center center;will-change:transform}.plane{position:absolute;inset:0;display:grid;border:1px solid rgba(215,228,255,.32);border-radius:15px;overflow:hidden;transform-style:preserve-3d;backface-visibility:visible;box-shadow:0 18px 38px rgba(0,0,0,.18);transition:opacity .18s ease,filter .18s ease,box-shadow .18s ease}.plane.inactive{opacity:.36;filter:saturate(.55) brightness(.82);pointer-events:none}.plane.active{opacity:.97;filter:none;z-index:5;box-shadow:0 0 0 2px rgba(109,140,255,.35),0 18px 38px rgba(0,0,0,.22)}
+.cell{border:0;padding:0;margin:0;display:flex;align-items:center;justify-content:center;min-width:0;min-height:0;position:relative;touch-action:manipulation;line-height:1}.cell.light{background:rgba(231,223,208,.93);color:#111827}.cell.dark{background:rgba(116,130,146,.93);color:#fff}.cell::after{content:"";position:absolute;inset:0;border:1px solid rgba(255,255,255,.045);pointer-events:none}.queen{font-size:clamp(28px,5.8vw,48px);filter:drop-shadow(0 2px 2px rgba(0,0,0,.38))}.layer-tag{position:absolute;right:10px;top:10px;z-index:6;pointer-events:none;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.1);background:rgba(11,18,32,.72);color:#e0e8ff;font-size:10px;font-weight:850}.axis{position:absolute;z-index:12;pointer-events:none;padding:4px 7px;border-radius:999px;border:1px solid rgba(255,255,255,.08);background:rgba(11,18,32,.68);color:#a9bad3;font-size:10px}.axis.x{right:14px;bottom:14px}.axis.y{left:14px;bottom:14px}.axis.z{left:14px;top:54px}
+.result{min-height:58px;margin-top:13px;border:1px solid var(--border);border-radius:14px;display:flex;align-items:center;justify-content:center;text-align:center;padding:12px;background:rgba(255,255,255,.018);font-size:18px;font-weight:900}.result.neutral{color:var(--muted);font-size:13px;font-weight:650}.result.ok{color:#8df3ab;border-color:rgba(34,197,94,.5);background:rgba(34,197,94,.08)}.result.bad{color:#ff9aae;border-color:rgba(244,63,94,.5);background:rgba(244,63,94,.08)}
+.explain{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}.info{border:1px solid var(--border);border-radius:14px;padding:11px;background:rgba(255,255,255,.02)}.info strong{display:block;font-size:12px;margin-bottom:4px}.info p{margin:0;color:var(--muted);font-size:11px;line-height:1.5}
+@media(max-width:820px){:root{--plane-size:292px}.setup{grid-template-columns:1fr}.actions{justify-content:flex-start}.stage{min-height:640px}.explain{grid-template-columns:1fr}}
+@media(max-width:560px){:root{--plane-size:260px}.app{padding-left:9px;padding-right:9px}.hero{padding:14px}.control-label{width:100%;flex-basis:100%}.mode-status{width:100%;margin-left:0}.stage{min-height:590px}.actions .btn{flex:1}}
+</style>
+</head>
+<body>
+<main class="app">
+  <section class="hero">
+    <div class="eyebrow">Reto ciego · reinas en 3D</div>
+    <h1>Reinas en un cubo</h1>
+    <p>Escoge el tamaño del cubo, coloca la configuración que creas máxima y verifica al final. La interfaz está pensada para que puedas seguir jugando cuando el cubo crece sin perder la referencia espacial.</p>
+    <div class="blind-note">No se muestran ataques, casillas inválidas, contador de reinas, máximo objetivo ni pistas parciales. “Verificar intento” solo responde <b>Correcto</b> o <b>Incorrecto</b>.</div>
+  </section>
+
+  <section class="setup">
+    <div class="levels" aria-label="Dificultad">
+      <button class="btn level active" data-n="3" type="button">3×3×3</button>
+      <button class="btn level" data-n="4" type="button">4×4×4</button>
+      <button class="btn level" data-n="5" type="button">5×5×5</button>
+    </div>
+    <div class="actions">
+      <button id="resetPieces" class="btn ghost" type="button">Reiniciar piezas</button>
+      <button id="check" class="btn primary" type="button">Verificar intento</button>
+    </div>
+  </section>
+
+  <section class="workspace">
+    <div class="workspace-head">
+      <div>
+        <div class="workspace-title">Espacio tridimensional</div>
+        <div class="workspace-sub">Rota el cubo para entender la posición general. Para colocar una reina con precisión, selecciona primero la capa Z que quieres editar: solo esa capa acepta toques.</div>
+      </div>
+    </div>
+
+    <div class="view-controls">
+      <div class="control-row">
+        <div class="control-label">Vista</div>
+        <div class="view-buttons">
+          <button id="perspective" class="small-btn active" type="button">Perspectiva</button>
+          <button id="front" class="small-btn" type="button">Frente</button>
+          <button id="top" class="small-btn" type="button">Arriba</button>
+          <button id="side" class="small-btn" type="button">Lado</button>
+          <button id="original" class="small-btn" type="button">Vista original</button>
+        </div>
+      </div>
+
+      <div class="control-row">
+        <div class="control-label">Capa activa</div>
+        <div id="layerButtons" class="layer-buttons"></div>
+        <div id="layerStatus" class="mode-status">Editando Z1</div>
+      </div>
+
+      <div class="control-row">
+        <div class="control-label">Separación</div>
+        <div class="range-wrap">
+          <input id="separation" type="range" min="46" max="150" step="2" value="92" aria-label="Separación entre capas">
+          <div id="separationValue" class="range-value">92 px</div>
+        </div>
+        <button id="compact" class="small-btn" type="button">Cubo</button>
+        <button id="explode" class="small-btn active" type="button">Separar capas</button>
+      </div>
+    </div>
+
+    <div id="stage" class="stage">
+      <div class="stage-tip">Arrastra para rotar · toca solo la capa activa</div>
+      <div class="axis z">Z</div><div class="axis y">Y</div><div class="axis x">X</div>
+      <div class="scene"><div id="cube" class="cube" aria-label="Cubo de reinas tridimensional"></div></div>
+    </div>
+
+    <div id="result" class="result neutral" aria-live="polite">Cuando creas que encontraste el máximo, verifica tu intento.</div>
+
+    <div class="explain">
+      <div class="info"><strong>Vista 3D</strong><p>Sirve para leer la configuración completa. Las capas no activas permanecen visibles, pero transparentes, para conservar la profundidad.</p></div>
+      <div class="info"><strong>Edición por capa</strong><p>Solo una capa recibe toques. Esto evita que en 4×4×4 o 5×5×5 selecciones accidentalmente una casilla que estaba detrás.</p></div>
+      <div class="info"><strong>Separación ajustable</strong><p>Puedes compactar el cubo para estudiar alineaciones o separar mucho las capas para colocar piezas con comodidad.</p></div>
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+  const cube=document.getElementById('cube'),stage=document.getElementById('stage'),layerButtons=document.getElementById('layerButtons'),layerStatus=document.getElementById('layerStatus'),separation=document.getElementById('separation'),separationValue=document.getElementById('separationValue'),result=document.getElementById('result'),checkBtn=document.getElementById('check'),resetPieces=document.getElementById('resetPieces'),levelButtons=[...document.querySelectorAll('.level')];
+  const viewBtns={perspective:document.getElementById('perspective'),front:document.getElementById('front'),top:document.getElementById('top'),side:document.getElementById('side')},originalBtn=document.getElementById('original'),compactBtn=document.getElementById('compact'),explodeBtn=document.getElementById('explode');
+
+  const maxima={3:4,4:7,5:13};
+  let n=3,activeLayer=0,queens=new Set(),depth=92,exploded=true;
+  const ORIGINAL_X=-56,ORIGINAL_Y=32;
+  let rotX=ORIGINAL_X,rotY=ORIGINAL_Y,dragging=false,dragged=false,startX=0,startY=0,baseX=rotX,baseY=rotY;
+
+  const key=(x,y,z)=>`${x},${y},${z}`;
+
+  function currentScale(){
+    const spread=(n-1)*depth;
+    const sizePenalty=n===5?.88:n===4?.94:1;
+    const spreadPenalty=spread>460?.82:spread>360?.88:spread>260?.94:1;
+    return sizePenalty*spreadPenalty;
+  }
+
+  function updateCubeTransform(){
+    cube.style.transform=`rotateX(${rotX}deg) rotateY(${rotY}deg) scale(${currentScale()})`;
+  }
+
+  function setView(name){
+    if(name==='perspective'){rotX=ORIGINAL_X;rotY=ORIGINAL_Y}
+    if(name==='front'){rotX=0;rotY=0}
+    if(name==='top'){rotX=-90;rotY=0}
+    if(name==='side'){rotX=0;rotY=90}
+    Object.entries(viewBtns).forEach(([k,b])=>b.classList.toggle('active',k===name));
+    updateCubeTransform();
+  }
+
+  function resetView(){setView('perspective')}
+
+  function renderLayerButtons(){
+    layerButtons.innerHTML='';
+    for(let z=0;z<n;z++){
+      const b=document.createElement('button');
+      b.type='button';
+      b.className='small-btn'+(z===activeLayer?' active':'');
+      b.textContent='Z'+(z+1);
+      b.addEventListener('click',()=>{
+        activeLayer=z;
+        result.className='result neutral';
+        result.textContent='Cuando creas que encontraste el máximo, verifica tu intento.';
+        render();
+      });
+      layerButtons.appendChild(b);
+    }
+    layerStatus.textContent='Editando Z'+(activeLayer+1);
+  }
+
+  function planeTranslate(z){
+    const spacing=exploded?depth:40;
+    return (z-(n-1)/2)*spacing;
+  }
+
+  function render(){
+    cube.innerHTML='';
+    for(let z=0;z<n;z++){
+      const plane=document.createElement('div');
+      plane.className='plane '+(z===activeLayer?'active':'inactive');
+      plane.style.gridTemplateColumns=`repeat(${n},1fr)`;
+      plane.style.gridTemplateRows=`repeat(${n},1fr)`;
+      plane.style.transform=`translateZ(${planeTranslate(z)}px)`;
+      plane.dataset.z=z;
+
+      for(let y=0;y<n;y++)for(let x=0;x<n;x++){
+        const cell=document.createElement('button');
+        cell.type='button';
+        cell.className='cell '+(((x+y)%2===0)?'light':'dark');
+        cell.dataset.x=x;cell.dataset.y=y;cell.dataset.z=z;
+        if(queens.has(key(x,y,z))){
+          const q=document.createElement('span');
+          q.className='queen';q.textContent='♛';cell.appendChild(q);
+        }
+        plane.appendChild(cell);
+      }
+
+      const tag=document.createElement('div');
+      tag.className='layer-tag';tag.textContent='Z'+(z+1);plane.appendChild(tag);
+      cube.appendChild(plane);
+    }
+
+    renderLayerButtons();
+    separationValue.textContent=depth+' px';
+    compactBtn.classList.toggle('active',!exploded);
+    explodeBtn.classList.toggle('active',exploded);
+    updateCubeTransform();
+  }
+
+  function attacks(a,b){
+    const d=[Math.abs(a.x-b.x),Math.abs(a.y-b.y),Math.abs(a.z-b.z)].filter(v=>v!==0);
+    return d.length>0&&d.every(v=>v===d[0]);
+  }
+
+  function currentQueens(){
+    return [...queens].map(s=>{const [x,y,z]=s.split(',').map(Number);return{x,y,z}});
+  }
+
+  function isNonAttacking(list){
+    for(let i=0;i<list.length;i++)for(let j=i+1;j<list.length;j++)if(attacks(list[i],list[j]))return false;
+    return true;
+  }
+
+  cube.addEventListener('click',e=>{
+    if(dragged){dragged=false;return}
+    const cell=e.target.closest('.cell');
+    if(!cell)return;
+    const z=Number(cell.dataset.z);
+    if(z!==activeLayer)return;
+    const x=Number(cell.dataset.x),y=Number(cell.dataset.y),k=key(x,y,z);
+    queens.has(k)?queens.delete(k):queens.add(k);
+    result.className='result neutral';
+    result.textContent='Cuando creas que encontraste el máximo, verifica tu intento.';
+    render();
+  });
+
+  stage.addEventListener('pointerdown',e=>{
+    dragging=true;dragged=false;startX=e.clientX;startY=e.clientY;baseX=rotX;baseY=rotY;stage.setPointerCapture(e.pointerId);
+  });
+  stage.addEventListener('pointermove',e=>{
+    if(!dragging)return;
+    const dx=e.clientX-startX,dy=e.clientY-startY;
+    if(Math.abs(dx)>3||Math.abs(dy)>3)dragged=true;
+    rotY=baseY+dx*.38;rotX=baseX-dy*.34;
+    if(rotY>180)rotY-=360;if(rotY<-180)rotY+=360;
+    rotX=Math.max(-155,Math.min(155,rotX));
+    Object.values(viewBtns).forEach(b=>b.classList.remove('active'));
+    updateCubeTransform();
+  });
+  function endDrag(e){if(!dragging)return;dragging=false;try{stage.releasePointerCapture(e.pointerId)}catch(err){}setTimeout(()=>{dragged=false},40)}
+  stage.addEventListener('pointerup',endDrag);stage.addEventListener('pointercancel',endDrag);
+
+  separation.addEventListener('input',()=>{depth=Number(separation.value);exploded=true;render()});
+  compactBtn.addEventListener('click',()=>{exploded=false;render()});
+  explodeBtn.addEventListener('click',()=>{exploded=true;render()});
+  viewBtns.perspective.addEventListener('click',()=>setView('perspective'));
+  viewBtns.front.addEventListener('click',()=>setView('front'));
+  viewBtns.top.addEventListener('click',()=>setView('top'));
+  viewBtns.side.addEventListener('click',()=>setView('side'));
+  originalBtn.addEventListener('click',resetView);
+
+  levelButtons.forEach(b=>b.addEventListener('click',()=>{
+    n=Number(b.dataset.n);queens=new Set();activeLayer=0;
+    depth=n===3?92:n===4?82:70;separation.value=String(depth);exploded=true;
+    result.className='result neutral';result.textContent='Cuando creas que encontraste el máximo, verifica tu intento.';
+    levelButtons.forEach(x=>x.classList.toggle('active',x===b));
+    resetView();render();
+  }));
+
+  resetPieces.addEventListener('click',()=>{queens.clear();result.className='result neutral';result.textContent='Cuando creas que encontraste el máximo, verifica tu intento.';render()});
+
+  checkBtn.addEventListener('click',()=>{
+    const list=currentQueens(),correct=list.length===maxima[n]&&isNonAttacking(list);
+    if(correct){result.className='result ok';result.textContent='Correcto.'}
+    else{result.className='result bad';result.textContent='Incorrecto.'}
+  });
+
+  render();resetView();
+})();
+</script>
+</body>
+</html>
