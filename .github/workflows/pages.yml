@@ -37,6 +37,7 @@ jobs:
           s = p.read_text(encoding='utf-8')
           spacing_css = '<link rel="stylesheet" href="./spacing-fix.css">'
           view_css = '<link rel="stylesheet" href="./view-layout.css">'
+          size_engine_js = '<script src="./size-engine.js"></script>'
           i18n_js = '<script src="./i18n.js"></script>'
           interaction_js = '<script src="./interaction-fix.js"></script>'
           view_js = '<script src="./view-layout.js"></script>'
@@ -46,7 +47,7 @@ jobs:
           for marker in (spacing_css, view_css):
               if marker not in s:
                   s = s.replace('</head>', marker + '\n</head>')
-          for marker in (i18n_js, interaction_js, view_js, assist_js, overlays_js, polish_js):
+          for marker in (size_engine_js, i18n_js, interaction_js, view_js, assist_js, overlays_js, polish_js):
               if marker not in s:
                   s = s.replace('</body>', marker + '\n</body>')
           p.write_text(s, encoding='utf-8')
