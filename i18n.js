@@ -9,28 +9,11 @@
         'También ataca directamente entre capas y por diagonales que atraviesan el cubo.',
         'Puedes colocar una reina en cualquier casilla; las ayudas solo resaltan información y nunca bloquean movimientos.'
       ],
-      cells: 'casillas',
-      view: 'Vista',
-      perspective: 'Perspectiva',
-      front: 'Frente',
-      original: 'Vista original',
-      spacing: 'Separación de capas',
-      aids: 'Ayudas',
-      attacked: 'Casillas atacadas',
-      conflicts: 'Reinas en conflicto',
-      layers: 'Capas',
-      layer: 'Capa',
-      top: 'Arriba',
-      bottom: 'Abajo',
-      reset: 'Reiniciar',
-      check: 'Verificar intento',
-      unchecked: 'Sin verificar',
-      correct: 'Correcto.',
-      incorrect: 'Incorrecto.',
-      sizeAria: 'Tamaño del puzzle',
-      layerAria: 'Seleccionar capa',
-      boardAria: 'Tablero tridimensional',
-      spacingAria: 'Separación entre capas'
+      cells: 'casillas', view: 'Vista', perspective: 'Perspectiva', front: 'Frente', original: 'Vista original',
+      spacing: 'Separación de capas', aids: 'Ayudas', attacked: 'Casillas atacadas', conflicts: 'Reinas en conflicto',
+      layers: 'Capas', layer: 'Capa', top: 'Arriba', bottom: 'Abajo', reset: 'Reiniciar', check: 'Verificar intento',
+      unchecked: 'Sin verificar', correct: 'Correcto.', incorrect: 'Incorrecto.',
+      sizeAria: 'Tamaño del puzzle', layerAria: 'Seleccionar capa', boardAria: 'Tablero tridimensional', spacingAria: 'Separación entre capas'
     },
     en: {
       title: 'Queens in a Cube',
@@ -41,28 +24,11 @@
         'It also attacks directly between layers and along diagonals that pass through the cube.',
         'You may place a queen on any square; the optional aids only highlight information and never block moves.'
       ],
-      cells: 'squares',
-      view: 'View',
-      perspective: 'Perspective',
-      front: 'Front',
-      original: 'Original view',
-      spacing: 'Layer spacing',
-      aids: 'Aids',
-      attacked: 'Attacked squares',
-      conflicts: 'Queens in conflict',
-      layers: 'Layers',
-      layer: 'Layer',
-      top: 'Top',
-      bottom: 'Bottom',
-      reset: 'Reset',
-      check: 'Check attempt',
-      unchecked: 'Not checked',
-      correct: 'Correct.',
-      incorrect: 'Incorrect.',
-      sizeAria: 'Puzzle size',
-      layerAria: 'Select layer',
-      boardAria: 'Three-dimensional board',
-      spacingAria: 'Spacing between layers'
+      cells: 'squares', view: 'View', perspective: 'Perspective', front: 'Front', original: 'Original view',
+      spacing: 'Layer spacing', aids: 'Aids', attacked: 'Attacked squares', conflicts: 'Queens in conflict',
+      layers: 'Layers', layer: 'Layer', top: 'Top', bottom: 'Bottom', reset: 'Reset', check: 'Check attempt',
+      unchecked: 'Not checked', correct: 'Correct.', incorrect: 'Incorrect.',
+      sizeAria: 'Puzzle size', layerAria: 'Select layer', boardAria: 'Three-dimensional board', spacingAria: 'Spacing between layers'
     }
   };
 
@@ -75,169 +41,114 @@
   const style = document.createElement('style');
   style.textContent = `
     .intro{position:relative}
-    .i18n-switch{
-      position:absolute;
-      top:-14px;
-      right:14px;
-      z-index:60;
-      display:flex;
-      gap:2px;
-      padding:3px;
-      border:1px solid var(--border);
-      border-radius:10px;
-      background:#101a2d;
-      box-shadow:0 5px 14px rgba(0,0,0,.28)
-    }
-    .i18n-btn{
-      min-width:38px;
-      height:28px;
-      padding:0 8px;
-      border:0;
-      border-radius:7px;
-      background:transparent;
-      color:var(--muted);
-      font-size:10px;
-      line-height:28px;
-      font-weight:900;
-      letter-spacing:.05em
-    }
-    .i18n-btn.active{
-      background:var(--accent-soft);
-      color:#fff;
-      box-shadow:inset 0 0 0 1px rgba(126,148,232,.42)
-    }
-    @media(max-width:590px){
-      .i18n-switch{top:-12px;right:10px}
-      .i18n-btn{min-width:36px;height:27px;line-height:27px}
-    }
+    .i18n-switch{position:absolute;top:-14px;right:14px;z-index:60;display:flex;gap:2px;padding:3px;border:1px solid var(--border);border-radius:10px;background:#101a2d;box-shadow:0 5px 14px rgba(0,0,0,.28)}
+    .i18n-btn{min-width:38px;height:28px;padding:0 8px;border:0;border-radius:7px;background:transparent;color:var(--muted);font-size:10px;line-height:28px;font-weight:900;letter-spacing:.05em}
+    .i18n-btn.active{background:var(--accent-soft);color:#fff;box-shadow:inset 0 0 0 1px rgba(126,148,232,.42)}
+    @media(max-width:590px){.i18n-switch{top:-12px;right:10px}.i18n-btn{min-width:36px;height:27px;line-height:27px}}
   `;
   document.head.appendChild(style);
 
   const intro = document.querySelector('.intro');
-  let esBtn = null;
-  let enBtn = null;
+  const sw = document.createElement('div');
+  sw.className = 'i18n-switch';
+  sw.setAttribute('role', 'group');
+  sw.setAttribute('aria-label', 'Idioma / Language');
 
-  if (intro) {
-    const sw = document.createElement('div');
-    sw.className = 'i18n-switch';
-    sw.setAttribute('role', 'group');
-    sw.setAttribute('aria-label', 'Idioma / Language');
-
-    esBtn = document.createElement('button');
-    enBtn = document.createElement('button');
-
-    for (const [button, code] of [[esBtn, 'es'], [enBtn, 'en']]) {
-      button.type = 'button';
-      button.className = 'i18n-btn';
-      button.textContent = code.toUpperCase();
-      button.setAttribute('aria-label', code === 'es' ? 'Español' : 'English');
-      button.addEventListener('click', () => setLanguage(code));
-      sw.appendChild(button);
-    }
-
-    intro.appendChild(sw);
+  const esBtn = document.createElement('button');
+  const enBtn = document.createElement('button');
+  for (const [button, code] of [[esBtn, 'es'], [enBtn, 'en']]) {
+    button.type = 'button';
+    button.className = 'i18n-btn';
+    button.textContent = code.toUpperCase();
+    button.setAttribute('aria-label', code === 'es' ? 'Español' : 'English');
+    button.addEventListener('click', () => setLanguage(code));
+    sw.appendChild(button);
   }
+  if (intro) intro.appendChild(sw);
 
   function setText(selector, value) {
     const el = document.querySelector(selector);
-    if (el) el.textContent = value;
+    if (el && el.textContent !== value) el.textContent = value;
   }
 
-  function setButtonText(id, value) {
+  function setButton(id, value) {
     const el = document.getElementById(id);
     if (!el) return;
-
-    const textNodes = [...el.childNodes].filter(
-      n => n.nodeType === Node.TEXT_NODE && n.textContent.trim()
-    );
-
-    if (textNodes.length) {
-      textNodes[textNodes.length - 1].textContent = ' ' + value;
+    const dot = el.querySelector('.assist-dot');
+    if (!dot) {
+      if (el.textContent !== value) el.textContent = value;
       return;
     }
-
-    if (!el.children.length) el.textContent = value;
+    let textNode = [...el.childNodes].find(n => n.nodeType === Node.TEXT_NODE);
+    if (!textNode) {
+      textNode = document.createTextNode('');
+      el.appendChild(textNode);
+    }
+    const next = value;
+    if (textNode.nodeValue.trim() !== next) textNode.nodeValue = next;
   }
 
-  function translateLayers(L) {
+  function translateDynamic() {
+    const L = copy[lang];
     const buttons = [...document.querySelectorAll('.layer-btn')];
     buttons.forEach((button, i) => {
       const name = button.querySelector('.layer-name');
       const pos = button.querySelector('.layer-pos');
-      if (name) name.textContent = `${L.layer} ${i + 1}`;
-      if (pos) pos.textContent = i === 0 ? L.top : i === buttons.length - 1 ? L.bottom : '';
+      const nextName = `${L.layer} ${i + 1}`;
+      const nextPos = i === 0 ? L.top : i === buttons.length - 1 ? L.bottom : '';
+      if (name && name.textContent !== nextName) name.textContent = nextName;
+      if (pos && pos.textContent !== nextPos) pos.textContent = nextPos;
     });
-  }
 
-  function translateResult(L) {
-    const el = document.getElementById('result');
-    if (!el) return;
-    el.textContent = el.classList.contains('ok')
-      ? L.correct
-      : el.classList.contains('bad')
-        ? L.incorrect
-        : L.unchecked;
-  }
-
-  let translating = false;
-
-  function translateDynamic() {
-    if (translating) return;
-    translating = true;
-    const L = copy[lang];
-    translateLayers(L);
-    translateResult(L);
-    translating = false;
+    const result = document.getElementById('result');
+    if (result) {
+      const nextResult = result.classList.contains('ok') ? L.correct : result.classList.contains('bad') ? L.incorrect : L.unchecked;
+      if (result.textContent !== nextResult) result.textContent = nextResult;
+    }
   }
 
   function applyLanguage() {
     const L = copy[lang];
-
     document.documentElement.lang = lang;
-    document.title = lang === 'es'
-      ? '3D Queens Challenge — Reinas 3D'
-      : '3D Queens Challenge — 3D Queens';
+    document.title = lang === 'es' ? '3D Queens Challenge — Reinas 3D' : '3D Queens Challenge — 3D Queens';
 
     setText('.intro h1', L.title);
-
     const goal = document.querySelector('.goal');
-    if (goal) goal.innerHTML = L.goal;
-
+    if (goal && goal.innerHTML !== L.goal) goal.innerHTML = L.goal;
     setText('.rules-title', L.rulesTitle);
     document.querySelectorAll('.rules li').forEach((el, i) => {
-      if (L.rules[i]) el.textContent = L.rules[i];
+      if (L.rules[i] && el.textContent !== L.rules[i]) el.textContent = L.rules[i];
     });
 
     document.querySelectorAll('.size-btn small').forEach((el, i) => {
       const count = [27, 64, 125][i];
-      if (count) el.textContent = `${count} ${L.cells}`;
+      const next = count ? `${count} ${L.cells}` : '';
+      if (next && el.textContent !== next) el.textContent = next;
     });
 
     const titles = document.querySelectorAll('.control-title');
-    if (titles[0]) titles[0].textContent = L.view;
-    if (titles[1]) titles[1].textContent = L.spacing;
-    if (titles[2]) titles[2].textContent = L.aids;
+    if (titles[0] && titles[0].textContent !== L.view) titles[0].textContent = L.view;
+    if (titles[1] && titles[1].textContent !== L.spacing) titles[1].textContent = L.spacing;
+    if (titles[2] && titles[2].textContent !== L.aids) titles[2].textContent = L.aids;
 
-    setButtonText('perspective', L.perspective);
-    setButtonText('front', L.front);
-    setButtonText('original', L.original);
-    setButtonText('showAttacked', L.attacked);
-    setButtonText('showConflicts', L.conflicts);
+    setButton('perspective', L.perspective);
+    setButton('front', L.front);
+    setButton('original', L.original);
+    setButton('showAttacked', L.attacked);
+    setButton('showConflicts', L.conflicts);
     setText('.rail-title', L.layers);
-    setButtonText('resetPieces', L.reset);
-    setButtonText('check', L.check);
+    setButton('resetPieces', L.reset);
+    setButton('check', L.check);
 
     document.querySelector('.size-strip')?.setAttribute('aria-label', L.sizeAria);
     document.getElementById('layerRail')?.setAttribute('aria-label', L.layerAria);
     document.getElementById('cube')?.setAttribute('aria-label', L.boardAria);
     document.getElementById('separation')?.setAttribute('aria-label', L.spacingAria);
 
-    if (esBtn && enBtn) {
-      esBtn.classList.toggle('active', lang === 'es');
-      enBtn.classList.toggle('active', lang === 'en');
-      esBtn.setAttribute('aria-pressed', String(lang === 'es'));
-      enBtn.setAttribute('aria-pressed', String(lang === 'en'));
-    }
+    esBtn.classList.toggle('active', lang === 'es');
+    enBtn.classList.toggle('active', lang === 'en');
+    esBtn.setAttribute('aria-pressed', String(lang === 'es'));
+    enBtn.setAttribute('aria-pressed', String(lang === 'en'));
 
     translateDynamic();
   }
@@ -249,32 +160,9 @@
     applyLanguage();
   }
 
-  const layerRail = document.getElementById('layerRail');
-  const result = document.getElementById('result');
-  let queued = false;
-
-  const observer = new MutationObserver(() => {
-    if (translating || queued) return;
-    queued = true;
-    queueMicrotask(() => {
-      queued = false;
-      translateDynamic();
-    });
+  document.addEventListener('click', () => {
+    queueMicrotask(translateDynamic);
   });
-
-  if (layerRail) {
-    observer.observe(layerRail, {childList:true, subtree:true, characterData:true});
-  }
-
-  if (result) {
-    observer.observe(result, {
-      childList:true,
-      subtree:true,
-      characterData:true,
-      attributes:true,
-      attributeFilter:['class']
-    });
-  }
 
   applyLanguage();
 })();
