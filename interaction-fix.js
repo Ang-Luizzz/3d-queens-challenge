@@ -3,10 +3,12 @@
   const cube = document.getElementById('cube');
   if (!stage || !cube) return;
 
+  const activeTouches = new Set();
   let pointerId = null;
   let startX = 0;
   let startY = 0;
   let moved = false;
+  let multiTouch = false;
   let suppressNativeUntil = 0;
 
   function activeLayerIndex() {
@@ -18,8 +20,6 @@
     const inactivePlanes = [...cube.querySelectorAll('.plane.inactive')];
     const previousVisibility = inactivePlanes.map(p => p.style.visibility);
 
-    // Temporarily remove the ghost layers only for hit-testing. They stay
-    // visually present to the player; this makes taps reach the active layer.
     inactivePlanes.forEach(p => { p.style.visibility = 'hidden'; });
     const hit = document.elementFromPoint(clientX, clientY);
     inactivePlanes.forEach((p, i) => { p.style.visibility = previousVisibility[i]; });
@@ -31,6 +31,21 @@
   }
 
   stage.addEventListener('pointerdown', e => {
+    // Synthetic events are used internally to drive view presets; never treat
+    // them as placement taps.
+    if (!e.isTrusted) return;
+
+    if (e.pointerType === 'touch') {
+      activeTouches.add(e.pointerId);
+      if (activeTouches.size > 1) {
+        multiTouch = true;
+        pointerId = null;
+        return;
+      }
+    }
+
+    if (e.pointerType === 'mouse' && (e.shiftKey || e.button === 1)) return;
+
     pointerId = e.pointerId;
     startX = e.clientX;
     startY = e.clientY;
@@ -38,14 +53,29 @@
   }, true);
 
   stage.addEventListener('pointermove', e => {
-    if (e.pointerId !== pointerId) return;
+    if (!e.isTrusted || multiTouch || e.pointerId !== pointerId) return;
     if (Math.abs(e.clientX - startX) > 3 || Math.abs(e.clientY - startY) > 3) {
       moved = true;
     }
   }, true);
 
   stage.addEventListener('pointerup', e => {
-    if (e.pointerId !== pointerId) return;
+    if (!e.isTrusted) return;
+
+    const wasMulti = multiTouch;
+    if (e.pointerType === 'touch') {
+      activeTouches.delete(e.pointerId);
+      if (activeTouches.size === 0) {
+        // Keep the multi-touch guard through this event, then clear it.
+        queueMicrotask(() => { multiTouch = false; });
+      }
+    }
+
+    if (wasMulti || e.pointerId !== pointerId) {
+      if (e.pointerId === pointerId) pointerId = null;
+      return;
+    }
+
     const wasMoved = moved;
     pointerId = null;
     moved = false;
@@ -54,15 +84,15 @@
     const cell = activeCellAtPoint(e.clientX, e.clientY);
     if (!cell) return;
 
-    // Trigger the game's existing placement logic. A following browser-native
-    // click is suppressed so one tap can never toggle the same queen twice.
     suppressNativeUntil = performance.now() + 250;
     cell.click();
   }, true);
 
-  stage.addEventListener('pointercancel', () => {
+  stage.addEventListener('pointercancel', e => {
+    if (e.pointerType === 'touch') activeTouches.delete(e.pointerId);
     pointerId = null;
     moved = false;
+    if (activeTouches.size === 0) multiTouch = false;
   }, true);
 
   stage.addEventListener('click', e => {
