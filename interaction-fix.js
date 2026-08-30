@@ -11,23 +11,46 @@
   let multiTouch = false;
   let suppressNativeUntil = 0;
 
-  function activeLayerIndex() {
-    const active = cube.querySelector('.plane.active');
-    return active ? Number(active.dataset.z) : -1;
-  }
-
   function activeCellAtPoint(clientX, clientY) {
-    const inactivePlanes = [...cube.querySelectorAll('.plane.inactive')];
-    const previousVisibility = inactivePlanes.map(p => p.style.visibility);
+    const activePlane = cube.querySelector('.plane.active');
+    if (!activePlane) return null;
 
-    inactivePlanes.forEach(p => { p.style.visibility = 'hidden'; });
-    const hit = document.elementFromPoint(clientX, clientY);
-    inactivePlanes.forEach((p, i) => { p.style.visibility = previousVisibility[i]; });
+    const boardRect = activePlane.getBoundingClientRect();
+    if (!boardRect.width || !boardRect.height) return null;
 
-    const cell = hit?.closest?.('.cell');
-    if (!cell || !cube.contains(cell)) return null;
-    if (Number(cell.dataset.z) !== activeLayerIndex()) return null;
-    return cell;
+    // Only accept taps near the projected active board. This keeps camera-control
+    // taps and empty-stage taps from placing pieces accidentally.
+    const margin = Math.max(10, Math.min(24, Math.min(boardRect.width, boardRect.height) * .06));
+    if (
+      clientX < boardRect.left - margin || clientX > boardRect.right + margin ||
+      clientY < boardRect.top - margin || clientY > boardRect.bottom + margin
+    ) return null;
+
+    const cells = [...activePlane.querySelectorAll('.cell')];
+    let best = null;
+    let bestScore = Infinity;
+
+    for (const cell of cells) {
+      const r = cell.getBoundingClientRect();
+      if (!r.width || !r.height) continue;
+
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      const dx = clientX - cx;
+      const dy = clientY - cy;
+      const norm = Math.max(1, r.width * r.width + r.height * r.height);
+      const inside = clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom;
+
+      // Nearest projected cell center wins. Being inside the projected bounds
+      // gets a strong bonus, which remains reliable even at steep 3D angles.
+      const score = (dx * dx + dy * dy) / norm - (inside ? 2 : 0);
+      if (score < bestScore) {
+        bestScore = score;
+        best = cell;
+      }
+    }
+
+    return best;
   }
 
   stage.addEventListener('pointerdown', e => {
@@ -66,7 +89,6 @@
     if (e.pointerType === 'touch') {
       activeTouches.delete(e.pointerId);
       if (activeTouches.size === 0) {
-        // Keep the multi-touch guard through this event, then clear it.
         queueMicrotask(() => { multiTouch = false; });
       }
     }
@@ -84,7 +106,9 @@
     const cell = activeCellAtPoint(e.clientX, e.clientY);
     if (!cell) return;
 
-    suppressNativeUntil = performance.now() + 250;
+    // Use the game's existing placement handler. The following browser-native
+    // click is suppressed so one tap cannot toggle the same queen twice.
+    suppressNativeUntil = performance.now() + 280;
     cell.click();
   }, true);
 
