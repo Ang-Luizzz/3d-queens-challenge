@@ -19,6 +19,7 @@
   const result = gameCard.querySelector('#result');
   const checkBtn = gameCard.querySelector('#check');
   const resetPieces = gameCard.querySelector('#resetPieces');
+  const actionbar = gameCard.querySelector('.actionbar');
   const perspectiveBtn = gameCard.querySelector('#perspective');
   const frontBtn = gameCard.querySelector('#front');
   const originalBtn = gameCard.querySelector('#original');
@@ -41,6 +42,7 @@
   let customMode = false;
   let activeLayer = 0;
   let queens = new Set();
+  let undoStack = [];
   let depth = 92;
   let showAttacked = false;
   let showConflicts = false;
@@ -67,13 +69,28 @@
     .custom-dim input:focus{border-color:#8197ed;box-shadow:0 0 0 2px rgba(109,140,255,.15)}
     .custom-apply{min-height:42px;padding:8px 14px;border:1px solid #687fe4;border-radius:10px;background:linear-gradient(135deg,#416be0,#7357db);color:#fff;font-weight:900}
     .custom-range-note{align-self:center;margin-left:auto;color:var(--muted);font-size:9px;font-weight:750}
+    .actionbar.has-undo{grid-template-columns:auto auto minmax(140px,1fr) auto}
+    #undoPiece:disabled{opacity:.38;cursor:default}
     @media(max-width:590px){
       .custom-size-panel{flex-wrap:wrap;align-items:end}
       .custom-dim{flex:1;min-width:58px}.custom-dim input{width:100%}
       .custom-apply{flex:1;min-width:92px}.custom-range-note{flex:1 0 100%;margin-left:0}
+      .actionbar.has-undo{grid-template-columns:repeat(3,minmax(0,1fr))}
+      .actionbar.has-undo .result{grid-column:1/-1;grid-row:1}
+      .actionbar.has-undo .action-btn{grid-row:2;min-width:0;padding-left:8px;padding-right:8px}
     }
   `;
   document.head.appendChild(style);
+
+  let undoBtn = gameCard.querySelector('#undoPiece');
+  if (!undoBtn && actionbar && resetPieces) {
+    undoBtn = document.createElement('button');
+    undoBtn.id = 'undoPiece';
+    undoBtn.type = 'button';
+    undoBtn.className = 'action-btn';
+    actionbar.insertBefore(undoBtn, resetPieces);
+    actionbar.classList.add('has-undo');
+  }
 
   // Fixed 6×6×6 sits beside the existing fixed sizes.
   let sixBtn = sizeStrip.querySelector('.size-btn[data-n="6"]');
@@ -113,8 +130,20 @@
   function lang(){ return document.documentElement.lang === 'en' ? 'en' : 'es'; }
   function words(){
     return lang() === 'en'
-      ? {custom:'Custom', customSub:'X × Y × Z', apply:'Apply', note:'3–6 on each axis', cells:'squares', unchecked:'Not checked', layer:'Layer', top:'Top', bottom:'Bottom', diagonal:'Diagonal'}
-      : {custom:'Personalizado', customSub:'X × Y × Z', apply:'Aplicar', note:'3–6 en cada eje', cells:'casillas', unchecked:'Sin verificar', layer:'Capa', top:'Arriba', bottom:'Abajo', diagonal:'Diagonal'};
+      ? {custom:'Custom', customSub:'X × Y × Z', apply:'Apply', note:'3–6 on each axis', cells:'squares', unchecked:'Not checked', layer:'Layer', top:'Top', bottom:'Bottom', diagonal:'Diagonal', undo:'Undo'}
+      : {custom:'Personalizado', customSub:'X × Y × Z', apply:'Aplicar', note:'3–6 en cada eje', cells:'casillas', unchecked:'Sin verificar', layer:'Capa', top:'Arriba', bottom:'Abajo', diagonal:'Diagonal', undo:'Deshacer'};
+  }
+
+  function updateUndoState(){
+    if (!undoBtn) return;
+    undoBtn.disabled = undoStack.length === 0;
+    undoBtn.setAttribute('aria-disabled', String(undoBtn.disabled));
+  }
+
+  function pushUndoState(){
+    undoStack.push(new Set(queens));
+    if (undoStack.length > 200) undoStack.shift();
+    updateUndoState();
   }
 
   function updateTexts(){
@@ -122,6 +151,7 @@
     customBtn.innerHTML = `${t.custom}<small>${t.customSub}</small>`;
     customApply.textContent = t.apply;
     customNote.textContent = t.note;
+    if (undoBtn) undoBtn.textContent = t.undo;
     fixedButtons.forEach(btn => {
       const n = Number(btn.dataset.n);
       const small = btn.querySelector('small');
@@ -263,6 +293,7 @@
     showAttackedBtn?.setAttribute('aria-pressed',String(showAttacked));
     showConflictsBtn?.setAttribute('aria-pressed',String(showConflicts));
     updateCubeTransform();
+    updateUndoState();
   }
 
   cube.addEventListener('click',e=>{
@@ -272,6 +303,7 @@
     const z=Number(cell.dataset.z);
     if(z!==activeLayer) return;
     const x=Number(cell.dataset.x), y=Number(cell.dataset.y), k=key(x,y,z);
+    pushUndoState();
     if(queens.has(k)) queens.delete(k); else queens.add(k);
     resetResult(); render();
   });
@@ -286,7 +318,7 @@
     if(Math.abs(dx)>3||Math.abs(dy)>3) dragged=true;
     rotY=baseY+dx*.38; rotX=baseX-dy*.34;
     if(rotY>180) rotY-=360; if(rotY<-180) rotY+=360;
-    rotX=Math.max(-150,Math.min(150,rotX));
+    if(rotX>180) rotX-=360; if(rotX<-180) rotX+=360;
     clearViewSelection(); updateCubeTransform();
   });
   function endDrag(e){
@@ -321,7 +353,7 @@
   function setDimensions(next,fromCustom){
     dims={x:next.x,y:next.y,z:next.z};
     customMode=fromCustom;
-    queens=new Set(); activeLayer=0; depth=defaultDepth();
+    queens=new Set(); undoStack=[]; activeLayer=0; depth=defaultDepth();
     separation.value=String(depth);
     markSizeButtons(); resetResult(); resetView(); render(); updateStageForSize();
     document.dispatchEvent(new CustomEvent('queens:sizechange',{detail:{...dims,custom:customMode}}));
@@ -355,7 +387,17 @@
     customPanel.classList.remove('open'); customBtn.setAttribute('aria-expanded','false');
   });
 
-  resetPieces?.addEventListener('click',()=>{ queens.clear(); resetResult(); render(); });
+  undoBtn?.addEventListener('click',()=>{
+    const previous=undoStack.pop();
+    if(!previous) return;
+    queens=new Set(previous);
+    resetResult(); render();
+  });
+
+  resetPieces?.addEventListener('click',()=>{
+    if(queens.size>0) pushUndoState();
+    queens.clear(); resetResult(); render();
+  });
   checkBtn.addEventListener('click',()=>{
     const list=queenList();
     const target=maxima[maxKey()];
@@ -373,5 +415,6 @@
   render();
   resetView();
   updateStageForSize();
+  updateUndoState();
   setTimeout(updateTexts,0);
 })();
