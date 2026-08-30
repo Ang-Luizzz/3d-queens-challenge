@@ -23,8 +23,11 @@ The original inline engine in `index.html` is currently superseded at runtime by
 
 ## Project continuity
 
-The project has grown beyond the original single queens puzzle. Detailed product decisions, architecture, history, current behavior, mathematical research, Knight-mode exploration, technical debt, and roadmap are maintained in:
+The project has grown beyond the original single queens puzzle. To continue development in another conversation or with another agent, read these files in this order:
 
-**[PROJECT_STATE.md](./PROJECT_STATE.md)**
+1. **[CURRENT_HANDOFF.md](./CURRENT_HANDOFF.md)** — latest approved state, most recent camera/orbit changes, and exact next task.
+2. **[PROJECT_STATE.md](./PROJECT_STATE.md)** — full history, product decisions, architecture, mathematical research, Knight-mode exploration, technical debt, roadmap, and earlier conclusions.
 
-Read that document before making structural changes or continuing the multi-mode roadmap.
+When the two documents differ, `CURRENT_HANDOFF.md` is newer and takes precedence.
+
+Then review the current `main` branch before making structural changes.
