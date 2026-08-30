@@ -36,11 +36,14 @@ jobs:
           p = Path('_site/index.html')
           s = p.read_text(encoding='utf-8')
           css_marker = '<link rel="stylesheet" href="./spacing-fix.css">'
-          js_marker = '<script src="./i18n.js"></script>'
+          i18n_marker = '<script src="./i18n.js"></script>'
+          interaction_marker = '<script src="./interaction-fix.js"></script>'
           if css_marker not in s:
               s = s.replace('</head>', css_marker + '\n</head>')
-          if js_marker not in s:
-              s = s.replace('</body>', js_marker + '\n</body>')
+          if i18n_marker not in s:
+              s = s.replace('</body>', i18n_marker + '\n</body>')
+          if interaction_marker not in s:
+              s = s.replace('</body>', interaction_marker + '\n</body>')
           p.write_text(s, encoding='utf-8')
           PY
 
