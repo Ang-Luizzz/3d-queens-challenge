@@ -52,7 +52,7 @@
     const table = {
       original: {3:112, 4:100, 5:90},
       front:    {3:92,  4:78,  5:66},
-      layers:   {3:108, 4:94,  5:84}
+      layers:   {3:116, 4:104, 5:94}
     };
     const value = table[kind]?.[n];
     if (!value) return;
@@ -118,8 +118,9 @@
     } else if (kind === 'front') {
       driveRotation(0, 0);
     } else {
-      // Stacked sections: clear vertical separation, minimal sideways skew.
-      driveRotation(-72, 4);
+      // Diagonal layer stack: the depth axis projects roughly 45° across the screen,
+      // so every board visibly steps behind the previous one instead of forming a vertical pile.
+      driveRotation(-45, -35);
     }
 
     markPreset(kind);
