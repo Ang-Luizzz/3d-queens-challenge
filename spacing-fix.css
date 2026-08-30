@@ -5,15 +5,15 @@
   transform-origin:center center;
 }
 
-/* Ghost layers stay readable, but their boards are much lighter so the
-   selected layer remains visually dominant. Queens keep their layer color. */
-.plane.inactive .cell.light{background:rgba(231,223,208,.10)}
-.plane.inactive .cell.dark{background:rgba(111,126,145,.09)}
-.plane.inactive .cell::after{border-color:rgba(255,255,255,.055)}
+/* Inactive layers stay clearly readable so their queens remain visually
+   anchored to boards instead of appearing to float in space. */
+.plane.inactive .cell.light{background:rgba(231,223,208,.28)}
+.plane.inactive .cell.dark{background:rgba(111,126,145,.24)}
+.plane.inactive .cell::after{border-color:rgba(255,255,255,.11)}
 .plane.inactive .queen{
-  opacity:.82;
-  transform:scale(.9);
-  filter:drop-shadow(0 1px 2px rgba(0,0,0,.42));
+  opacity:.96;
+  transform:scale(.94);
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,.46));
 }
 .plane.active{
   box-shadow:
