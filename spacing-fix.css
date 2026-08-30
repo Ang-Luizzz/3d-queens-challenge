@@ -1,13 +1,25 @@
-/* Extra breathing room for the 3D board without changing the game layout. */
+/* Extra breathing room and clearer active-layer editing. */
 .scene{
   perspective:1750px;
   transform:scale(.96);
   transform-origin:center center;
 }
 
-.plane.inactive .cell.light{background:rgba(231,223,208,.24)}
-.plane.inactive .cell.dark{background:rgba(111,126,145,.22)}
-.plane.inactive .cell::after{border-color:rgba(255,255,255,.09)}
+/* Ghost layers stay readable, but their boards are much lighter so the
+   selected layer remains visually dominant. Queens keep their layer color. */
+.plane.inactive .cell.light{background:rgba(231,223,208,.10)}
+.plane.inactive .cell.dark{background:rgba(111,126,145,.09)}
+.plane.inactive .cell::after{border-color:rgba(255,255,255,.055)}
+.plane.inactive .queen{
+  opacity:.82;
+  transform:scale(.9);
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,.42));
+}
+.plane.active{
+  box-shadow:
+    0 0 0 3px color-mix(in srgb,var(--layer-color) 78%,transparent),
+    0 18px 42px rgba(0,0,0,.26)
+}
 
 @media(max-width:850px){
   .stage{min-height:670px}
@@ -27,9 +39,10 @@
     min-height:620px;
   }
 
+  /* Shift the cube slightly right so the vertical layer rail does not cover it. */
   .scene{
     inset:14px;
-    transform:scale(.86);
+    transform:translateX(28px) scale(.86);
   }
 
   .layer-rail{
@@ -37,17 +50,39 @@
     z-index:30;
     left:8px;
     top:8px;
-    width:72px;
+    width:96px;
     padding:7px;
     gap:6px;
-    background:rgba(8,17,31,.82);
+    background:rgba(8,17,31,.84);
     backdrop-filter:blur(8px);
     box-shadow:0 8px 24px rgba(0,0,0,.22);
   }
 
-  .rail-title{text-align:center}
-  .layer-btn{min-height:49px;padding:7px 6px}
-  .layer-btn .layer-line{gap:5px}
+  .rail-title{
+    text-align:center;
+    margin-bottom:1px;
+  }
+
+  .layer-btn{
+    min-height:50px;
+    padding:7px 8px;
+  }
+
+  .layer-btn .layer-line{gap:6px}
+  .layer-name{
+    font-size:11px;
+    white-space:nowrap;
+  }
+  .layer-pos{
+    margin-left:16px;
+    font-size:8px;
+    white-space:nowrap;
+  }
+}
+
+@media(max-width:360px){
+  :root{--plane-size:min(210px,62vw)}
+  .scene{transform:translateX(24px) scale(.83)}
+  .layer-rail{width:90px}
   .layer-name{font-size:10px}
-  .layer-pos{margin-left:15px;font-size:8px}
 }
