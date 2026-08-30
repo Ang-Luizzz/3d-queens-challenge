@@ -2,7 +2,7 @@
   const style = document.createElement('style');
   style.textContent = `
     .custom-size-toggle{
-      font-size:inherit!important;
+      font-size:12px!important;
       letter-spacing:normal!important;
       padding-left:6px!important;
       padding-right:6px!important;
