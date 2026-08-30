@@ -9,7 +9,7 @@
         'También ataca directamente entre capas y por diagonales que atraviesan el cubo.',
         'Puedes colocar una reina en cualquier casilla; las ayudas solo resaltan información y nunca bloquean movimientos.'
       ],
-      cells: 'casillas', view: 'Vista', perspective: 'Perspectiva', front: 'Frente', back: 'Atrás', original: 'Vista original',
+      cells: 'casillas', view: 'Vista', perspective: 'Perspectiva', front: 'Frente', back: 'Atrás', original: 'Diagonal',
       spacing: 'Separación de capas', aids: 'Ayudas', attacked: 'Casillas atacadas', conflicts: 'Reinas en conflicto',
       layers: 'Capas', layer: 'Capa', top: 'Arriba', bottom: 'Abajo', reset: 'Reiniciar', check: 'Verificar intento',
       unchecked: 'Sin verificar', correct: 'Correcto.', incorrect: 'Incorrecto.',
@@ -25,7 +25,7 @@
         'It also attacks directly between layers and along diagonals that pass through the cube.',
         'You may place a queen on any square; the optional aids only highlight information and never block moves.'
       ],
-      cells: 'squares', view: 'View', perspective: 'Perspective', front: 'Front', back: 'Back', original: 'Original view',
+      cells: 'squares', view: 'View', perspective: 'Perspective', front: 'Front', back: 'Back', original: 'Diagonal',
       spacing: 'Layer spacing', aids: 'Aids', attacked: 'Attacked squares', conflicts: 'Queens in conflict',
       layers: 'Layers', layer: 'Layer', top: 'Top', bottom: 'Bottom', reset: 'Reset', check: 'Check attempt',
       unchecked: 'Not checked', correct: 'Correct.', incorrect: 'Incorrect.',
@@ -89,6 +89,13 @@
     if (textNode.nodeValue.trim() !== value) textNode.nodeValue = value;
   }
 
+  function setControlTitleFromControl(control, value, rootSelector = '.control-block') {
+    const el = typeof control === 'string' ? document.querySelector(control) : control;
+    const root = el?.closest(rootSelector);
+    const title = root?.querySelector('.control-title');
+    if (title && title.textContent !== value) title.textContent = value;
+  }
+
   function translateDynamic() {
     const L = copy[lang];
     const buttons = [...document.querySelectorAll('.layer-btn')];
@@ -127,10 +134,11 @@
       if (next && el.textContent !== next) el.textContent = next;
     });
 
-    const titles = document.querySelectorAll('.control-title');
-    if (titles[0] && titles[0].textContent !== L.view) titles[0].textContent = L.view;
-    if (titles[1] && titles[1].textContent !== L.spacing) titles[1].textContent = L.spacing;
-    if (titles[2] && titles[2].textContent !== L.aids) titles[2].textContent = L.aids;
+    // These blocks are moved around after initial load. Identify each title by
+    // the control it actually belongs to instead of relying on DOM order.
+    setControlTitleFromControl('#original', L.view);
+    setControlTitleFromControl('#separation', L.spacing);
+    setControlTitleFromControl('#showAttacked', L.aids, '.assist-control');
 
     setButton('perspective', L.perspective);
     setButton('front', L.front);
