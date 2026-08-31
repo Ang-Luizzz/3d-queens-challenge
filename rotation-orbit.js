@@ -37,8 +37,10 @@
   let didRotate = false;
   let suppressClick = false;
   let gestureAxes = null;
+  let gestureMode = 'pending';
 
-  const START_THRESHOLD = 4;
+  const INTENT_THRESHOLD = 7;
+  const AXIS_LOCK_RATIO = 1.6;
   const H_SENSITIVITY = .38;
   const V_SENSITIVITY = .34;
 
@@ -92,6 +94,7 @@
     orientation=IDENTITY();
     baseOrientation=IDENTITY();
     gestureAxes=null;
+    gestureMode='pending';
     applyOrientation();
   }
 
@@ -121,6 +124,14 @@
 
   function projectedLength(v){
     return Math.hypot(v.x,v.y);
+  }
+
+  function chooseGestureMode(dx,dy){
+    const ax=Math.abs(dx);
+    const ay=Math.abs(dy);
+    if(ax>=ay*AXIS_LOCK_RATIO) return 'horizontal';
+    if(ay>=ax*AXIS_LOCK_RATIO) return 'vertical';
+    return 'diagonal';
   }
 
   // Determine which canonical face (XY, XZ or YZ) is most frontal to the
@@ -182,6 +193,7 @@
     didRotate=false;
     baseOrientation=cloneQ(orientation);
     gestureAxes=visibleFaceFrame();
+    gestureMode='pending';
 
     // Stop the old fixed-front one-pointer engine from also rotating #cube.
     // A tap still produces its normal click because we do not preventDefault.
@@ -193,12 +205,20 @@
 
     const dx=e.clientX-startX;
     const dy=e.clientY-startY;
-    if(!didRotate && Math.hypot(dx,dy)<=START_THRESHOLD) return;
+    if(!didRotate && Math.hypot(dx,dy)<=INTENT_THRESHOLD) return;
     if(!didRotate){
       didRotate=true;
+      gestureMode=chooseGestureMode(dx,dy);
       try{stage.setPointerCapture(e.pointerId);}catch(_){}
     }
     if(!gestureAxes) gestureAxes=visibleFaceFrame();
+
+    // Natural finger movement is rarely perfectly straight. When the gesture
+    // begins clearly horizontal or vertical, ignore drift on the secondary
+    // screen direction for the entire drag. A genuinely diagonal start keeps
+    // both components available.
+    const effectiveDx=gestureMode==='vertical'?0:dx;
+    const effectiveDy=gestureMode==='horizontal'?0:dy;
 
     // The axes are selected once at gesture start and remain fixed for the
     // entire drag, just like the original control kept baseX/baseY fixed. On
@@ -207,13 +227,13 @@
       gestureAxes.verticalAxis.x,
       gestureAxes.verticalAxis.y,
       gestureAxes.verticalAxis.z,
-      dx*H_SENSITIVITY
+      effectiveDx*H_SENSITIVITY
     );
     const pitch=fromAxisAngle(
       gestureAxes.horizontalAxis.x,
       gestureAxes.horizontalAxis.y,
       gestureAxes.horizontalAxis.z,
-      -dy*V_SENSITIVITY
+      -effectiveDy*V_SENSITIVITY
     );
 
     orientation=normalize(multiply(pitch,multiply(yaw,baseOrientation)));
@@ -234,6 +254,7 @@
     activePointer=null;
     didRotate=false;
     gestureAxes=null;
+    gestureMode='pending';
   }
 
   document.addEventListener('pointerup',finishPointer,true);
