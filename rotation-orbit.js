@@ -4,9 +4,11 @@
   const camera = document.querySelector('.camera-transform');
   if (!stage || !cube || !camera || !camera.contains(cube)) return;
 
-  // Manual rotation lives in an outer transform so named views keep their
-  // approved base orientation. Unlike the previous free trackball, this layer
-  // intentionally has only yaw + pitch: no roll can accumulate.
+  // Named views keep their approved base orientation on #cube. Manual user
+  // rotation lives in this outer layer and is composed around the BOARD'S
+  // current local axes. This is intentionally different from a turntable:
+  // after turning the board 90 degrees, an upward drag rotates around the
+  // board's newly oriented local horizontal axis rather than the original one.
   const orbit = document.createElement('div');
   orbit.className = 'orbit-transform';
   camera.insertBefore(orbit, cube);
@@ -27,8 +29,8 @@
   `;
   document.head.appendChild(style);
 
-  let yaw = 0;
-  let pitch = 0;
+  const IDENTITY = () => ({x:0,y:0,z:0,w:1});
+  let orientation = IDENTITY();
   let activePointer = null;
   let startX = 0;
   let startY = 0;
@@ -36,40 +38,54 @@
   let lastY = 0;
   let didRotate = false;
   let suppressClick = false;
-  let gestureMode = 'pending';
+  let gestureAxis = 'pending';
 
   const START_THRESHOLD = 6;
-  const LOCK_RATIO = 1.45;
-  const YAW_SENSITIVITY = .30;
-  const PITCH_SENSITIVITY = .27;
-  const FREE_SENSITIVITY = .25;
-  const MAX_PITCH = 68;
+  const SENSITIVITY = .30;
 
-  function normalizeYaw(value){
-    let next = value % 360;
-    if (next > 180) next -= 360;
-    if (next < -180) next += 360;
-    return next;
+  function multiply(a,b){
+    return {
+      w:a.w*b.w-a.x*b.x-a.y*b.y-a.z*b.z,
+      x:a.w*b.x+a.x*b.w+a.y*b.z-a.z*b.y,
+      y:a.w*b.y-a.x*b.z+a.y*b.w+a.z*b.x,
+      z:a.w*b.z+a.x*b.y-a.y*b.x+a.z*b.w
+    };
   }
 
-  function clampPitch(value){
-    return Math.max(-MAX_PITCH, Math.min(MAX_PITCH, value));
+  function normalize(q){
+    const m=Math.hypot(q.x,q.y,q.z,q.w)||1;
+    return {x:q.x/m,y:q.y/m,z:q.z/m,w:q.w/m};
+  }
+
+  function fromAxisAngle(x,y,z,degrees){
+    const mag=Math.hypot(x,y,z)||1;
+    const half=degrees*Math.PI/360;
+    const s=Math.sin(half)/mag;
+    return {x:x*s,y:y*s,z:z*s,w:Math.cos(half)};
   }
 
   function applyOrientation(){
-    // Turntable order: yaw around the stable screen/world vertical axis, then
-    // pitch around the horizontal axis. There is deliberately no rotateZ/roll.
-    if (Math.abs(yaw) < .0001 && Math.abs(pitch) < .0001) {
-      orbit.style.transform = 'none';
+    const q=normalize(orientation);
+    orientation=q;
+    const w=Math.max(-1,Math.min(1,q.w));
+    const angleRad=2*Math.acos(w);
+    const s=Math.sqrt(Math.max(0,1-w*w));
+
+    if(s<1e-7 || Math.abs(angleRad)<1e-7){
+      orbit.style.transform='none';
       return;
     }
-    orbit.style.transform = `rotateY(${yaw}deg) rotateX(${pitch}deg)`;
+
+    const x=q.x/s;
+    const y=q.y/s;
+    const z=q.z/s;
+    const angle=angleRad*180/Math.PI;
+    orbit.style.transform=`rotate3d(${x},${y},${z},${angle}deg)`;
   }
 
   function resetOrbit(){
-    yaw = 0;
-    pitch = 0;
-    gestureMode = 'pending';
+    orientation=IDENTITY();
+    gestureAxis='pending';
     applyOrientation();
   }
 
@@ -77,17 +93,14 @@
     return Boolean(target?.closest?.('.camera-tools'));
   }
 
-  function chooseGestureMode(totalX,totalY){
-    const ax = Math.abs(totalX);
-    const ay = Math.abs(totalY);
-    if (ax > ay * LOCK_RATIO) return 'horizontal';
-    if (ay > ax * LOCK_RATIO) return 'vertical';
-    return 'free';
+  function chooseGestureAxis(totalX,totalY){
+    // Every drag owns exactly one axis. This removes the tiny unwanted second
+    // rotation that used to accumulate when a finger was not perfectly straight.
+    return Math.abs(totalX) >= Math.abs(totalY) ? 'localY' : 'localX';
   }
 
   stage.addEventListener('pointerdown',e=>{
-    // Existing scripts still use synthetic pointer events to establish named
-    // presets. Only replace rotation for real user input.
+    // Synthetic events remain available to the existing preset system.
     if(!e.isTrusted || isCameraControl(e.target)) return;
     if(e.pointerType==='mouse' && (e.shiftKey || e.button===1 || e.button!==0)) return;
     if(activePointer!==null) return;
@@ -96,10 +109,12 @@
     startX=lastX=e.clientX;
     startY=lastY=e.clientY;
     didRotate=false;
-    gestureMode='pending';
+    gestureAxis='pending';
 
-    // A tap must remain available for placing/removing a piece.
-    e.stopPropagation();
+    // view-layout's earlier capture listener has already seen the pointer (so
+    // two-finger pan/zoom still works). Stop the old Euler drag engine beneath
+    // this layer from also rotating the cube.
+    e.stopImmediatePropagation();
   },true);
 
   stage.addEventListener('pointermove',e=>{
@@ -111,7 +126,7 @@
 
     if(!didRotate){
       didRotate=true;
-      gestureMode=chooseGestureMode(totalX,totalY);
+      gestureAxis=chooseGestureAxis(totalX,totalY);
       try{stage.setPointerCapture(e.pointerId);}catch(_){}
     }
 
@@ -119,25 +134,30 @@
     const dy=e.clientY-lastY;
     lastX=e.clientX;
     lastY=e.clientY;
-    if(dx===0 && dy===0) return;
 
-    // Intent lock filters the small sideways drift that naturally happens in a
-    // mostly vertical/horizontal drag. A genuinely diagonal drag keeps both.
-    if(gestureMode==='horizontal'){
-      yaw=normalizeYaw(yaw+dx*YAW_SENSITIVITY);
-    }else if(gestureMode==='vertical'){
-      pitch=clampPitch(pitch-dy*PITCH_SENSITIVITY);
-    }else{
-      yaw=normalizeYaw(yaw+dx*FREE_SENSITIVITY);
-      pitch=clampPitch(pitch-dy*FREE_SENSITIVITY);
+    let delta=null;
+    if(gestureAxis==='localY' && dx!==0){
+      // Horizontal drag: rotate around the board's CURRENT local vertical axis.
+      delta=fromAxisAngle(0,1,0,dx*SENSITIVITY);
+    }else if(gestureAxis==='localX' && dy!==0){
+      // Vertical drag: rotate around the board's CURRENT local horizontal axis.
+      // After a 90° horizontal turn this axis points in a different world/screen
+      // direction, which is what allows the layers to be turned from side-by-side
+      // into a vertical stack.
+      delta=fromAxisAngle(1,0,0,-dy*SENSITIVITY);
     }
 
-    applyOrientation();
+    if(delta){
+      // Post-multiply: delta is expressed in the object's LOCAL coordinates.
+      // Pre-multiplying here would make the axes screen/world-relative instead.
+      orientation=normalize(multiply(orientation,delta));
+      applyOrientation();
+    }
 
     document.querySelectorAll('#original,#front,#back,#perspective').forEach(btn=>btn.classList.remove('active'));
     stage.classList.remove('view-original','view-front','view-back','view-layers');
     e.preventDefault();
-    e.stopPropagation();
+    e.stopImmediatePropagation();
   },true);
 
   function finishPointer(e){
@@ -149,11 +169,9 @@
     try{stage.releasePointerCapture(e.pointerId);}catch(_){}
     activePointer=null;
     didRotate=false;
-    gestureMode='pending';
+    gestureAxis='pending';
   }
 
-  // Document capture guarantees cleanup even when the two-finger camera
-  // gesture in view-layout stops propagation on the stage itself.
   document.addEventListener('pointerup',finishPointer,true);
   document.addEventListener('pointercancel',finishPointer,true);
 
@@ -164,7 +182,8 @@
     e.stopImmediatePropagation();
   },true);
 
-  // Named views and size changes start from their exact approved orientation.
+  // Presets and size changes are exact starting points, so manual local-axis
+  // rotation is cleared without changing the preset's own base orientation.
   document.addEventListener('click',e=>{
     const target=e.target instanceof Element?e.target:null;
     if(!target) return;
