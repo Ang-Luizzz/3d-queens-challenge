@@ -4,11 +4,9 @@
   const camera = document.querySelector('.camera-transform');
   if (!stage || !cube || !camera || !camera.contains(cube)) return;
 
-  // Named views keep their approved base orientation on #cube. Manual user
-  // rotation lives in this outer layer and is composed around the BOARD'S
-  // current local axes. This is intentionally different from a turntable:
-  // after turning the board 90 degrees, an upward drag rotates around the
-  // board's newly oriented local horizontal axis rather than the original one.
+  // Manual rotation lives in an outer transform instead of rewriting the
+  // cube's Euler angles. Named views can keep their approved base orientation,
+  // while real pointer drags are composed around screen-relative axes.
   const orbit = document.createElement('div');
   orbit.className = 'orbit-transform';
   camera.insertBefore(orbit, cube);
@@ -38,10 +36,7 @@
   let lastY = 0;
   let didRotate = false;
   let suppressClick = false;
-  let gestureAxis = 'pending';
-
-  const START_THRESHOLD = 6;
-  const SENSITIVITY = .30;
+  const SENSITIVITY = .42;
 
   function multiply(a,b){
     return {
@@ -68,24 +63,19 @@
     const q=normalize(orientation);
     orientation=q;
     const w=Math.max(-1,Math.min(1,q.w));
-    const angleRad=2*Math.acos(w);
+    let angle=2*Math.acos(w);
     const s=Math.sqrt(Math.max(0,1-w*w));
-
-    if(s<1e-7 || Math.abs(angleRad)<1e-7){
+    if(s<1e-7 || Math.abs(angle)<1e-7){
       orbit.style.transform='none';
       return;
     }
-
-    const x=q.x/s;
-    const y=q.y/s;
-    const z=q.z/s;
-    const angle=angleRad*180/Math.PI;
+    const x=q.x/s, y=q.y/s, z=q.z/s;
+    angle=angle*180/Math.PI;
     orbit.style.transform=`rotate3d(${x},${y},${z},${angle}deg)`;
   }
 
   function resetOrbit(){
     orientation=IDENTITY();
-    gestureAxis='pending';
     applyOrientation();
   }
 
@@ -93,40 +83,27 @@
     return Boolean(target?.closest?.('.camera-tools'));
   }
 
-  function chooseGestureAxis(totalX,totalY){
-    // Every drag owns exactly one axis. This removes the tiny unwanted second
-    // rotation that used to accumulate when a finger was not perfectly straight.
-    return Math.abs(totalX) >= Math.abs(totalY) ? 'localY' : 'localX';
-  }
-
   stage.addEventListener('pointerdown',e=>{
-    // Synthetic events remain available to the existing preset system.
+    // Synthetic pointer events are still used internally to establish the
+    // approved named presets. Only replace rotation for actual user input.
     if(!e.isTrusted || isCameraControl(e.target)) return;
     if(e.pointerType==='mouse' && (e.shiftKey || e.button===1 || e.button!==0)) return;
     if(activePointer!==null) return;
-
     activePointer=e.pointerId;
     startX=lastX=e.clientX;
     startY=lastY=e.clientY;
     didRotate=false;
-    gestureAxis='pending';
-
-    // view-layout's earlier capture listener has already seen the pointer (so
-    // two-finger pan/zoom still works). Stop the old Euler drag engine beneath
-    // this layer from also rotating the cube.
-    e.stopImmediatePropagation();
+    // Do not prevent default here: a tap must still be able to place a piece.
+    e.stopPropagation();
   },true);
 
   stage.addEventListener('pointermove',e=>{
     if(!e.isTrusted || e.pointerId!==activePointer) return;
-
     const totalX=e.clientX-startX;
     const totalY=e.clientY-startY;
-    if(!didRotate && Math.hypot(totalX,totalY)<=START_THRESHOLD) return;
-
+    if(!didRotate && Math.hypot(totalX,totalY)<=4) return;
     if(!didRotate){
       didRotate=true;
-      gestureAxis=chooseGestureAxis(totalX,totalY);
       try{stage.setPointerCapture(e.pointerId);}catch(_){}
     }
 
@@ -134,30 +111,20 @@
     const dy=e.clientY-lastY;
     lastX=e.clientX;
     lastY=e.clientY;
+    if(dx===0 && dy===0) return;
 
-    let delta=null;
-    if(gestureAxis==='localY' && dx!==0){
-      // Horizontal drag: rotate around the board's CURRENT local vertical axis.
-      delta=fromAxisAngle(0,1,0,dx*SENSITIVITY);
-    }else if(gestureAxis==='localX' && dy!==0){
-      // Vertical drag: rotate around the board's CURRENT local horizontal axis.
-      // After a 90° horizontal turn this axis points in a different world/screen
-      // direction, which is what allows the layers to be turned from side-by-side
-      // into a vertical stack.
-      delta=fromAxisAngle(1,0,0,-dy*SENSITIVITY);
-    }
-
-    if(delta){
-      // Post-multiply: delta is expressed in the object's LOCAL coordinates.
-      // Pre-multiplying here would make the axes screen/world-relative instead.
-      orientation=normalize(multiply(orientation,delta));
-      applyOrientation();
-    }
+    // The axis is perpendicular to the drag vector in the screen plane:
+    // drag right -> rotate around screen Y; drag down -> rotate around -X.
+    // Pre-multiplication keeps those axes screen-relative at every orientation.
+    const distance=Math.hypot(dx,dy);
+    const delta=fromAxisAngle(-dy,dx,0,distance*SENSITIVITY);
+    orientation=normalize(multiply(delta,orientation));
+    applyOrientation();
 
     document.querySelectorAll('#original,#front,#back,#perspective').forEach(btn=>btn.classList.remove('active'));
     stage.classList.remove('view-original','view-front','view-back','view-layers');
     e.preventDefault();
-    e.stopImmediatePropagation();
+    e.stopPropagation();
   },true);
 
   function finishPointer(e){
@@ -169,9 +136,10 @@
     try{stage.releasePointerCapture(e.pointerId);}catch(_){}
     activePointer=null;
     didRotate=false;
-    gestureAxis='pending';
   }
 
+  // Document capture guarantees cleanup even when the two-finger camera
+  // gesture in view-layout stops propagation on the stage itself.
   document.addEventListener('pointerup',finishPointer,true);
   document.addEventListener('pointercancel',finishPointer,true);
 
@@ -182,8 +150,9 @@
     e.stopImmediatePropagation();
   },true);
 
-  // Presets and size changes are exact starting points, so manual local-axis
-  // rotation is cleared without changing the preset's own base orientation.
+  // A named view or a size change starts from its own approved orientation.
+  // Reset only the manual orbit layer; the base cube orientation remains owned
+  // by the existing view/size engines.
   document.addEventListener('click',e=>{
     const target=e.target instanceof Element?e.target:null;
     if(!target) return;
