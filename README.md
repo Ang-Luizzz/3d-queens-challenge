@@ -25,9 +25,10 @@ The original inline engine in `index.html` is currently superseded at runtime by
 
 The project has grown beyond the original single queens puzzle. To continue development in another conversation or with another agent, read these files in this order:
 
-1. **[CURRENT_HANDOFF.md](./CURRENT_HANDOFF.md)** — latest approved state, most recent camera/orbit changes, and exact next task.
-2. **[PROJECT_STATE.md](./PROJECT_STATE.md)** — full history, product decisions, architecture, mathematical research, Knight-mode exploration, technical debt, roadmap, and earlier conclusions.
+1. **[LATEST_STATUS.md](./LATEST_STATUS.md)** — changes made after the last approved handoff; currently records the hybrid turntable rotation pending visual validation.
+2. **[CURRENT_HANDOFF.md](./CURRENT_HANDOFF.md)** — latest fully approved state and exact roadmap position before the pending change.
+3. **[PROJECT_STATE.md](./PROJECT_STATE.md)** — full history, product decisions, architecture, mathematical research, Knight-mode exploration, technical debt, roadmap, and earlier conclusions.
 
-When the two documents differ, `CURRENT_HANDOFF.md` is newer and takes precedence.
+Precedence is `LATEST_STATUS.md` → `CURRENT_HANDOFF.md` → `PROJECT_STATE.md` when they differ.
 
 Then review the current `main` branch before making structural changes.
