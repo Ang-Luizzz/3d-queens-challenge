@@ -4,9 +4,9 @@
   const camera = document.querySelector('.camera-transform');
   if (!stage || !cube || !camera || !camera.contains(cube)) return;
 
-  // Manual rotation lives in an outer transform instead of rewriting the
-  // cube's Euler angles. Named views can keep their approved base orientation,
-  // while real pointer drags are composed around screen-relative axes.
+  // One-finger manual rotation remains the approved free trackball. Named views
+  // keep their approved base orientation; this outer layer stores only manual
+  // orientation. Two-finger twist and Level operate on the same orientation.
   const orbit = document.createElement('div');
   orbit.className = 'orbit-transform';
   camera.insertBefore(orbit, cube);
@@ -59,6 +59,13 @@
     return {x:x*s,y:y*s,z:z*s,w:Math.cos(half)};
   }
 
+  function normalizeDegrees(value){
+    let next=value%360;
+    if(next>180) next-=360;
+    if(next<-180) next+=360;
+    return next;
+  }
+
   function applyOrientation(){
     const q=normalize(orientation);
     orientation=q;
@@ -77,6 +84,11 @@
   function resetOrbit(){
     orientation=IDENTITY();
     applyOrientation();
+  }
+
+  function clearNamedView(){
+    document.querySelectorAll('#original,#front,#back,#perspective').forEach(btn=>btn.classList.remove('active'));
+    stage.classList.remove('view-original','view-front','view-back','view-layers');
   }
 
   function isCameraControl(target){
@@ -113,16 +125,14 @@
     lastY=e.clientY;
     if(dx===0 && dy===0) return;
 
-    // The axis is perpendicular to the drag vector in the screen plane:
-    // drag right -> rotate around screen Y; drag down -> rotate around -X.
-    // Pre-multiplication keeps those axes screen-relative at every orientation.
+    // Free trackball: axis is perpendicular to the drag vector in the screen
+    // plane. Pre-multiplication keeps the incremental axis screen-relative.
     const distance=Math.hypot(dx,dy);
     const delta=fromAxisAngle(-dy,dx,0,distance*SENSITIVITY);
     orientation=normalize(multiply(delta,orientation));
     applyOrientation();
+    clearNamedView();
 
-    document.querySelectorAll('#original,#front,#back,#perspective').forEach(btn=>btn.classList.remove('active'));
-    stage.classList.remove('view-original','view-front','view-back','view-layers');
     e.preventDefault();
     e.stopPropagation();
   },true);
@@ -149,6 +159,62 @@
     e.preventDefault();
     e.stopImmediatePropagation();
   },true);
+
+  // view-layout owns two-finger pan/pinch. It emits only deliberate twist
+  // deltas after a small angular dead zone, so pinch/drag jitter does not roll
+  // the board. Twist is a screen-Z rotation and therefore feels like turning a
+  // physical card with two fingers.
+  document.addEventListener('queens:twist',e=>{
+    const degrees=Number(e.detail?.degrees);
+    if(!Number.isFinite(degrees) || Math.abs(degrees)<.001) return;
+    const delta=fromAxisAngle(0,0,1,degrees);
+    orientation=normalize(multiply(delta,orientation));
+    applyOrientation();
+    clearNamedView();
+  });
+
+  function transformMatrix(el){
+    const value=getComputedStyle(el).transform;
+    return value && value!=='none' ? new DOMMatrix(value) : new DOMMatrix();
+  }
+
+  function projectedVector(matrix,x,y,z){
+    const p=new DOMPoint(x,y,z,0).matrixTransform(matrix);
+    return {x:p.x,y:p.y};
+  }
+
+  // Remove only screen-space roll. The viewing direction and tilt stay where
+  // they are; Level simply rotates around the axis pointing toward the viewer
+  // until a board axis is horizontal/vertical again.
+  function levelView(){
+    try{
+      const total=transformMatrix(orbit).multiply(transformMatrix(cube));
+      let v=projectedVector(total,0,-1,0); // board's visual "up" direction
+      let target=-90;
+
+      // If local up is almost pointing directly toward/away from the viewer,
+      // its screen projection is too small to define roll. Use local right.
+      if(Math.hypot(v.x,v.y)<.08){
+        v=projectedVector(total,1,0,0);
+        target=0;
+      }
+      if(Math.hypot(v.x,v.y)<.08) return;
+
+      const current=Math.atan2(v.y,v.x)*180/Math.PI;
+      const correction=normalizeDegrees(target-current);
+      if(Math.abs(correction)<.05) return;
+
+      const delta=fromAxisAngle(0,0,1,correction);
+      orientation=normalize(multiply(delta,orientation));
+      applyOrientation();
+      clearNamedView();
+    }catch(_){
+      // DOMMatrix is widely available in target browsers; if unavailable,
+      // leveling simply does nothing rather than disturbing the camera.
+    }
+  }
+
+  document.addEventListener('queens:levelview',levelView);
 
   // A named view or a size change starts from its own approved orientation.
   // Reset only the manual orbit layer; the base cube orientation remains owned
