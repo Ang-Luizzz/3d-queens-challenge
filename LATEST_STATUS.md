@@ -4,67 +4,80 @@
 >
 > Última actualización: 2026-08-30.
 
-## Cambio actual pendiente de validación: rotación híbrida estable
+## Cambio actual pendiente de validación: rotación por ejes locales del tablero
 
-La implementación libre de `rotation-orbit.js` mediante trackball/cuaterniones resolvió el problema de ejes fijos y fue inicialmente aprobada, pero durante uso más prolongado apareció una nueva limitación de UX: demasiada libertad de rotación permite acumular pequeños giros laterales (roll), voltear el tablero con facilidad y perder la referencia espacial.
+La implementación anterior tipo turntable estable (`yaw + pitch` respecto a ejes fijos) redujo el roll accidental, pero no permitía alcanzar el ángulo que el usuario realmente buscaba.
 
-El usuario describió el caso típico: estando de frente quiere inclinar un poco hacia arriba y después mirar ligeramente de lado; las pequeñas desviaciones involuntarias de cada gesto se acumulan y las tarjetas terminan torcidas, haciendo difícil volver a una orientación cómoda sin seleccionar otra vista completa.
+### Necesidad exacta
 
-### Decisión de diseño
+Caso de uso descrito por el usuario:
 
-Se acordó sustituir el trackball libre por un sistema híbrido tipo **turntable orbit**:
+1. partir de la vista de Frente;
+2. girar horizontalmente aproximadamente 90°;
+3. con el tablero ya girado, arrastrar hacia arriba;
+4. ese segundo gesto debe interpretarse respecto a **la orientación actual del tablero**, no respecto al eje original de la Capa 1;
+5. así debe ser posible observar el lateral y después rotarlo de forma que varias capas aparezcan una sobre otra/verticalmente.
 
-- giro horizontal libre de 360°;
-- inclinación vertical controlada;
-- sin roll deliberado;
-- sin volteos verticales fáciles;
-- bloqueo de intención de gesto para ignorar pequeñas desviaciones laterales en movimientos claramente horizontales o verticales;
-- movimientos genuinamente diagonales pueden modificar yaw y pitch al mismo tiempo;
-- sensibilidad menor para ajustes finos;
-- vistas Diagonal, Frente, Atrás y Capas permanecen como presets exactos;
-- zoom, pan, centrado y separación de capas no cambian.
+El sistema turntable no podía hacer esto porque el movimiento vertical seguía ligado a un eje fijo del mundo/pantalla.
 
-### Implementación actual
+### Nueva implementación
 
-`rotation-orbit.js` ya fue modificado.
+`rotation-orbit.js` vuelve a usar una orientación acumulada con cuaterniones, pero ya no es un trackball libre.
 
-Estado manual acumulado:
+Principio clave:
 
-- `yaw`: giro horizontal;
-- `pitch`: inclinación vertical;
-- no existe estado de `roll`.
+- cada gesto se bloquea a **un solo eje local del tablero**;
+- gesto predominantemente horizontal → gira alrededor del eje local Y actual;
+- gesto predominantemente vertical → gira alrededor del eje local X actual;
+- las rotaciones se **post-multiplican**, por lo que el eje utilizado ya está transformado por todos los giros anteriores del tablero;
+- no se mezclan X e Y dentro de un mismo gesto;
+- para combinar orientaciones se hacen gestos consecutivos.
 
-Transformación manual:
+Esto significa que después de girar 90° horizontalmente, un gesto vertical ya no usa el mismo eje que tenía el tablero en Frente. Usa el eje horizontal **actual** del objeto, permitiendo alcanzar orientaciones que el turntable fijo no podía producir.
 
-```css
-rotateY(yaw) rotateX(pitch)
-```
+### Control de movimientos accidentales
 
-Parámetros actuales:
+Para evitar el problema del trackball libre anterior:
 
-- umbral para considerar un gesto como rotación: 6 px;
-- relación para bloquear intención horizontal/vertical: 1.45;
-- sensibilidad horizontal: 0.30°/px;
-- sensibilidad vertical: 0.27°/px;
-- sensibilidad de gesto diagonal: 0.25°/px;
-- pitch manual limitado a ±68°;
-- yaw normalizado pero sin límite efectivo de vueltas.
+- umbral inicial: 6 px antes de considerar un gesto como rotación;
+- al superar el umbral se decide una sola vez si el gesto es horizontal o vertical;
+- el eje queda bloqueado durante todo ese arrastre;
+- pequeñas desviaciones en el otro sentido se ignoran completamente;
+- sensibilidad actual: 0.30° por píxel;
+- no existe un límite angular artificial: los ejes locales pueden girar completamente cuando el usuario lo hace deliberadamente.
 
-### Bloqueo de intención
+### Interferencia del motor de rotación antiguo
 
-Al superar el umbral inicial, el gesto se clasifica una vez:
+Se detectó además que el motor Euler de `size-engine.js` todavía podía recibir parte de los eventos de puntero por debajo de `rotation-orbit.js`.
 
-- `horizontal`: si el movimiento X domina claramente; solo cambia yaw;
-- `vertical`: si Y domina claramente; solo cambia pitch;
-- `free`: si el movimiento es realmente diagonal; cambia ambos.
+La nueva implementación detiene esos eventos con `stopImmediatePropagation()` después de que los listeners anteriores de cámara hayan tenido oportunidad de detectar el puntero. La intención es que durante una rotación manual real exista **un único dueño de la rotación**, evitando que dos sistemas transformen el tablero simultáneamente.
 
-La clasificación permanece durante ese arrastre completo. Esto evita que una desviación pequeña del dedo introduzca gradualmente una orientación no deseada.
+Los gestos de pan/zoom de dos dedos gestionados por `view-layout.js` deben seguir funcionando porque ese listener se registra antes y puede interceptar el gesto multitáctil.
+
+### Presets
+
+Se mantienen sin cambios:
+
+- Diagonal;
+- Frente;
+- Atrás;
+- Capas.
+
+Seleccionar un preset o cambiar tamaño reinicia únicamente la rotación manual acumulada y vuelve a usar la orientación exacta de la vista elegida como punto de partida.
 
 ### Estado de aprobación
 
 **Pendiente de validación visual por el usuario.**
 
-No considerar esta cámara estable/aprobada hasta recibir confirmación explícita. Si funciona como se espera, este archivo debe integrarse en `CURRENT_HANDOFF.md` y marcar la rotación híbrida como la solución definitiva.
+Prueba principal recomendada:
+
+1. elegir Frente;
+2. arrastrar horizontalmente hasta quedar aproximadamente a 90°;
+3. soltar;
+4. iniciar un segundo gesto vertical;
+5. comprobar que ahora ese segundo movimiento rota en relación con el tablero ya girado y permite convertir la disposición lateral de capas en una disposición vertical/apilada.
+
+No considerar esta cámara definitiva hasta confirmación explícita.
 
 ## Estado de las demás correcciones
 
@@ -83,6 +96,6 @@ Siguen aprobadas:
 
 ## Después de validar la cámara
 
-Volver al punto de investigación que estaba pendiente:
+Volver al punto de investigación pendiente:
 
 **Caballos — Evitar:** buscar una última variante intermedia y compararla contra la variante difícil que actualmente va ganando. Ver `CURRENT_HANDOFF.md` y `PROJECT_STATE.md` para reglas, resultados numéricos y roadmap completo.
