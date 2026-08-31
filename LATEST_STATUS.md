@@ -4,80 +4,49 @@
 >
 > Última actualización: 2026-08-30.
 
-## Cambio actual pendiente de validación: rotación por ejes locales del tablero
+## Estado actual de la rotación
 
-La implementación anterior tipo turntable estable (`yaw + pitch` respecto a ejes fijos) redujo el roll accidental, pero no permitía alcanzar el ángulo que el usuario realmente buscaba.
+Las dos pruebas posteriores a la rotación libre —turntable estable y rotación por ejes locales del tablero— fueron rechazadas por el usuario por sentirse incómodas, rígidas o producir movimientos raros.
 
-### Necesidad exacta
+El usuario identificó que las mejores experiencias hasta ahora fueron:
 
-Caso de uso descrito por el usuario:
+1. el sistema original, por ser estable y predecible;
+2. la rotación completamente libre tipo trackball/cuaterniones, por permitir alcanzar cualquier orientación.
 
-1. partir de la vista de Frente;
-2. girar horizontalmente aproximadamente 90°;
-3. con el tablero ya girado, arrastrar hacia arriba;
-4. ese segundo gesto debe interpretarse respecto a **la orientación actual del tablero**, no respecto al eje original de la Capa 1;
-5. así debe ser posible observar el lateral y después rotarlo de forma que varias capas aparezcan una sobre otra/verticalmente.
+Por esta razón se revirtió `rotation-orbit.js` exactamente a la versión de trackball libre que ya había sido probada y aprobada previamente con “Funciona bien”.
 
-El sistema turntable no podía hacer esto porque el movimiento vertical seguía ligado a un eje fijo del mundo/pantalla.
+### Implementación activa
 
-### Nueva implementación
+La rotación manual vuelve a usar una orientación acumulada mediante cuaterniones.
 
-`rotation-orbit.js` vuelve a usar una orientación acumulada con cuaterniones, pero ya no es un trackball libre.
+Para cada movimiento del puntero:
 
-Principio clave:
+- el eje incremental es perpendicular al vector del gesto en el plano de la pantalla;
+- la rotación incremental se pre-multiplica;
+- el movimiento se interpreta respecto a la pantalla en cada instante;
+- no existe un límite artificial de orientación;
+- se puede alcanzar cualquier vista espacial;
+- los presets Diagonal, Frente, Atrás y Capas siguen siendo puntos de partida exactos;
+- pan, zoom y centrado permanecen separados.
 
-- cada gesto se bloquea a **un solo eje local del tablero**;
-- gesto predominantemente horizontal → gira alrededor del eje local Y actual;
-- gesto predominantemente vertical → gira alrededor del eje local X actual;
-- las rotaciones se **post-multiplican**, por lo que el eje utilizado ya está transformado por todos los giros anteriores del tablero;
-- no se mezclan X e Y dentro de un mismo gesto;
-- para combinar orientaciones se hacen gestos consecutivos.
+Commit del rollback:
 
-Esto significa que después de girar 90° horizontalmente, un gesto vertical ya no usa el mismo eje que tenía el tablero en Frente. Usa el eje horizontal **actual** del objeto, permitiendo alcanzar orientaciones que el turntable fijo no podía producir.
+- `034d06ed30acc8e4176ee0f025666b2389c963aa` — restaura la rotación libre aprobada.
 
-### Control de movimientos accidentales
+### Problema conocido que queda sin resolver
 
-Para evitar el problema del trackball libre anterior:
+La libertad completa permite acumular pequeñas cantidades de roll y puede dejar el tablero ladeado después de muchos movimientos. También puede ser fácil perder una orientación cómoda.
 
-- umbral inicial: 6 px antes de considerar un gesto como rotación;
-- al superar el umbral se decide una sola vez si el gesto es horizontal o vertical;
-- el eje queda bloqueado durante todo ese arrastre;
-- pequeñas desviaciones en el otro sentido se ignoran completamente;
-- sensibilidad actual: 0.30° por píxel;
-- no existe un límite angular artificial: los ejes locales pueden girar completamente cuando el usuario lo hace deliberadamente.
+No se debe volver a resolver este problema sustituyendo toda la geometría de la rotación por sistemas rígidos de yaw/pitch o ejes locales bloqueados; esas alternativas ya fueron probadas y rechazadas.
 
-### Interferencia del motor de rotación antiguo
+La siguiente dirección de UX recomendada es **conservar la rotación libre** y añadir una corrección opcional pequeña, por ejemplo:
 
-Se detectó además que el motor Euler de `size-engine.js` todavía podía recibir parte de los eventos de puntero por debajo de `rotation-orbit.js`.
+- `Nivelar / Straighten`: eliminar únicamente el ladeo/roll conservando lo máximo posible la dirección actual de observación;
+- o una asistencia/snap opcional, nunca obligatoria.
 
-La nueva implementación detiene esos eventos con `stopImmediatePropagation()` después de que los listeners anteriores de cámara hayan tenido oportunidad de detectar el puntero. La intención es que durante una rotación manual real exista **un único dueño de la rotación**, evitando que dos sistemas transformen el tablero simultáneamente.
+La idea es reparar la orientación cuando el usuario quiera sin quitarle libertad durante la exploración.
 
-Los gestos de pan/zoom de dos dedos gestionados por `view-layout.js` deben seguir funcionando porque ese listener se registra antes y puede interceptar el gesto multitáctil.
-
-### Presets
-
-Se mantienen sin cambios:
-
-- Diagonal;
-- Frente;
-- Atrás;
-- Capas.
-
-Seleccionar un preset o cambiar tamaño reinicia únicamente la rotación manual acumulada y vuelve a usar la orientación exacta de la vista elegida como punto de partida.
-
-### Estado de aprobación
-
-**Pendiente de validación visual por el usuario.**
-
-Prueba principal recomendada:
-
-1. elegir Frente;
-2. arrastrar horizontalmente hasta quedar aproximadamente a 90°;
-3. soltar;
-4. iniciar un segundo gesto vertical;
-5. comprobar que ahora ese segundo movimiento rota en relación con el tablero ya girado y permite convertir la disposición lateral de capas en una disposición vertical/apilada.
-
-No considerar esta cámara definitiva hasta confirmación explícita.
+No implementar todavía esa ayuda sin evaluar su comportamiento.
 
 ## Estado de las demás correcciones
 
@@ -94,7 +63,7 @@ Siguen aprobadas:
 - vistas base;
 - resto de la interfaz de Reinas 3D.
 
-## Después de validar la cámara
+## Después de cerrar la cámara
 
 Volver al punto de investigación pendiente:
 
