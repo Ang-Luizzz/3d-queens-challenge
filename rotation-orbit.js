@@ -4,9 +4,9 @@
   const camera = document.querySelector('.camera-transform');
   if (!stage || !cube || !camera || !camera.contains(cube)) return;
 
-  // Manual rotation lives in an outer transform instead of rewriting the
-  // cube's Euler angles. Named views can keep their approved base orientation,
-  // while real pointer drags are composed around screen-relative axes.
+  // Manual rotation lives in an outer transform so named views keep their
+  // approved base orientation. Unlike the previous free trackball, this layer
+  // intentionally has only yaw + pitch: no roll can accumulate.
   const orbit = document.createElement('div');
   orbit.className = 'orbit-transform';
   camera.insertBefore(orbit, cube);
@@ -27,8 +27,8 @@
   `;
   document.head.appendChild(style);
 
-  const IDENTITY = () => ({x:0,y:0,z:0,w:1});
-  let orientation = IDENTITY();
+  let yaw = 0;
+  let pitch = 0;
   let activePointer = null;
   let startX = 0;
   let startY = 0;
@@ -36,46 +36,40 @@
   let lastY = 0;
   let didRotate = false;
   let suppressClick = false;
-  const SENSITIVITY = .42;
+  let gestureMode = 'pending';
 
-  function multiply(a,b){
-    return {
-      w:a.w*b.w-a.x*b.x-a.y*b.y-a.z*b.z,
-      x:a.w*b.x+a.x*b.w+a.y*b.z-a.z*b.y,
-      y:a.w*b.y-a.x*b.z+a.y*b.w+a.z*b.x,
-      z:a.w*b.z+a.x*b.y-a.y*b.x+a.z*b.w
-    };
+  const START_THRESHOLD = 6;
+  const LOCK_RATIO = 1.45;
+  const YAW_SENSITIVITY = .30;
+  const PITCH_SENSITIVITY = .27;
+  const FREE_SENSITIVITY = .25;
+  const MAX_PITCH = 68;
+
+  function normalizeYaw(value){
+    let next = value % 360;
+    if (next > 180) next -= 360;
+    if (next < -180) next += 360;
+    return next;
   }
 
-  function normalize(q){
-    const m=Math.hypot(q.x,q.y,q.z,q.w)||1;
-    return {x:q.x/m,y:q.y/m,z:q.z/m,w:q.w/m};
-  }
-
-  function fromAxisAngle(x,y,z,degrees){
-    const mag=Math.hypot(x,y,z)||1;
-    const half=degrees*Math.PI/360;
-    const s=Math.sin(half)/mag;
-    return {x:x*s,y:y*s,z:z*s,w:Math.cos(half)};
+  function clampPitch(value){
+    return Math.max(-MAX_PITCH, Math.min(MAX_PITCH, value));
   }
 
   function applyOrientation(){
-    const q=normalize(orientation);
-    orientation=q;
-    const w=Math.max(-1,Math.min(1,q.w));
-    let angle=2*Math.acos(w);
-    const s=Math.sqrt(Math.max(0,1-w*w));
-    if(s<1e-7 || Math.abs(angle)<1e-7){
-      orbit.style.transform='none';
+    // Turntable order: yaw around the stable screen/world vertical axis, then
+    // pitch around the horizontal axis. There is deliberately no rotateZ/roll.
+    if (Math.abs(yaw) < .0001 && Math.abs(pitch) < .0001) {
+      orbit.style.transform = 'none';
       return;
     }
-    const x=q.x/s, y=q.y/s, z=q.z/s;
-    angle=angle*180/Math.PI;
-    orbit.style.transform=`rotate3d(${x},${y},${z},${angle}deg)`;
+    orbit.style.transform = `rotateY(${yaw}deg) rotateX(${pitch}deg)`;
   }
 
   function resetOrbit(){
-    orientation=IDENTITY();
+    yaw = 0;
+    pitch = 0;
+    gestureMode = 'pending';
     applyOrientation();
   }
 
@@ -83,27 +77,41 @@
     return Boolean(target?.closest?.('.camera-tools'));
   }
 
+  function chooseGestureMode(totalX,totalY){
+    const ax = Math.abs(totalX);
+    const ay = Math.abs(totalY);
+    if (ax > ay * LOCK_RATIO) return 'horizontal';
+    if (ay > ax * LOCK_RATIO) return 'vertical';
+    return 'free';
+  }
+
   stage.addEventListener('pointerdown',e=>{
-    // Synthetic pointer events are still used internally to establish the
-    // approved named presets. Only replace rotation for actual user input.
+    // Existing scripts still use synthetic pointer events to establish named
+    // presets. Only replace rotation for real user input.
     if(!e.isTrusted || isCameraControl(e.target)) return;
     if(e.pointerType==='mouse' && (e.shiftKey || e.button===1 || e.button!==0)) return;
     if(activePointer!==null) return;
+
     activePointer=e.pointerId;
     startX=lastX=e.clientX;
     startY=lastY=e.clientY;
     didRotate=false;
-    // Do not prevent default here: a tap must still be able to place a piece.
+    gestureMode='pending';
+
+    // A tap must remain available for placing/removing a piece.
     e.stopPropagation();
   },true);
 
   stage.addEventListener('pointermove',e=>{
     if(!e.isTrusted || e.pointerId!==activePointer) return;
+
     const totalX=e.clientX-startX;
     const totalY=e.clientY-startY;
-    if(!didRotate && Math.hypot(totalX,totalY)<=4) return;
+    if(!didRotate && Math.hypot(totalX,totalY)<=START_THRESHOLD) return;
+
     if(!didRotate){
       didRotate=true;
+      gestureMode=chooseGestureMode(totalX,totalY);
       try{stage.setPointerCapture(e.pointerId);}catch(_){}
     }
 
@@ -113,12 +121,17 @@
     lastY=e.clientY;
     if(dx===0 && dy===0) return;
 
-    // The axis is perpendicular to the drag vector in the screen plane:
-    // drag right -> rotate around screen Y; drag down -> rotate around -X.
-    // Pre-multiplication keeps those axes screen-relative at every orientation.
-    const distance=Math.hypot(dx,dy);
-    const delta=fromAxisAngle(-dy,dx,0,distance*SENSITIVITY);
-    orientation=normalize(multiply(delta,orientation));
+    // Intent lock filters the small sideways drift that naturally happens in a
+    // mostly vertical/horizontal drag. A genuinely diagonal drag keeps both.
+    if(gestureMode==='horizontal'){
+      yaw=normalizeYaw(yaw+dx*YAW_SENSITIVITY);
+    }else if(gestureMode==='vertical'){
+      pitch=clampPitch(pitch-dy*PITCH_SENSITIVITY);
+    }else{
+      yaw=normalizeYaw(yaw+dx*FREE_SENSITIVITY);
+      pitch=clampPitch(pitch-dy*FREE_SENSITIVITY);
+    }
+
     applyOrientation();
 
     document.querySelectorAll('#original,#front,#back,#perspective').forEach(btn=>btn.classList.remove('active'));
@@ -136,6 +149,7 @@
     try{stage.releasePointerCapture(e.pointerId);}catch(_){}
     activePointer=null;
     didRotate=false;
+    gestureMode='pending';
   }
 
   // Document capture guarantees cleanup even when the two-finger camera
@@ -150,9 +164,7 @@
     e.stopImmediatePropagation();
   },true);
 
-  // A named view or a size change starts from its own approved orientation.
-  // Reset only the manual orbit layer; the base cube orientation remains owned
-  // by the existing view/size engines.
+  // Named views and size changes start from their exact approved orientation.
   document.addEventListener('click',e=>{
     const target=e.target instanceof Element?e.target:null;
     if(!target) return;
