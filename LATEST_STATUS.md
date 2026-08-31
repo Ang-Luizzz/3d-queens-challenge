@@ -15,48 +15,59 @@ Después de varias pruebas se descartó como solución definitiva:
 
 Las vistas `Diagonal`, `Frente`, `Atrás` y `Capas` siguen siendo puntos canónicos y no deben cambiar.
 
-## Prueba actual pendiente de validación: ejes dinámicos según la cara visible
+## Dirección actual: ejes dinámicos según la cara visible
 
-### Idea central
+El usuario probó la versión de ejes dinámicos y respondió que **está bien en general**, identificando un último problema de precisión del gesto: al intentar mover exactamente arriba/abajo o izquierda/derecha, el dedo naturalmente puede desviarse un poco y esa pequeña componente diagonal también producía una segunda rotación no deseada.
 
-El problema identificado por el usuario es que el movimiento normal seguía interpretando arriba/abajo/izquierda/derecha según la orientación original de la cara Frente.
+La base de la cámara se conserva. No se vuelve a cambiar el modelo geométrico.
 
-La nueva prueba elimina los botones `↺/↻` y cambia la lógica de un dedo:
+### Cómo funciona un dedo
 
-1. al comenzar cada arrastre se calcula la orientación visual actual del tablero;
-2. se transforman los tres ejes canónicos X/Y/Z del tablero a coordenadas de pantalla;
-3. se determina cuál de los tres planos canónicos (XY, XZ o YZ) está más de frente al usuario; esto se hace buscando cuál normal local apunta con mayor componente hacia/desde Z de pantalla;
-4. de los dos ejes que pertenecen a ese plano, se identifica cuál se ve más vertical y cuál más horizontal;
-5. esos dos ejes se usan para ese arrastre completo;
-6. al soltar y comenzar un nuevo gesto, se vuelve a analizar la nueva orientación.
+Al comenzar cada arrastre:
 
-Esto evita dos extremos:
+1. se calcula la orientación visual actual del tablero;
+2. se transforman los ejes canónicos X/Y/Z a coordenadas de pantalla;
+3. se detecta qué plano canónico (XY, XZ o YZ) está más de frente;
+4. de sus dos ejes se identifica cuál se ve más vertical y cuál más horizontal;
+5. esos ejes quedan fijos durante ese arrastre;
+6. al soltar, el siguiente gesto vuelve a analizar la nueva orientación.
 
-- no usa un eje fijo derivado de la vista Frente;
-- tampoco permite una rotación trackball arbitraria alrededor de cualquier vector.
+Así el movimiento ya no depende permanentemente de la orientación original de `Frente`, pero tampoco se convierte en un trackball libre.
 
-Cada gesto sigue restringido a **dos ejes canónicos del tablero**, pero dichos ejes se seleccionan según lo que realmente está viendo el usuario.
-
-### Comportamiento de un dedo
-
-La sensibilidad conserva los valores del movimiento original:
+Sensibilidad conservada:
 
 - horizontal: `0.38°/px`;
 - vertical: `0.34°/px`.
 
-Al iniciar el gesto se guarda:
+## Último refinamiento: bloqueo de intención del gesto
 
-- orientación manual actual;
-- eje canónico que visualmente funciona como vertical en la cara dominante;
-- eje canónico que visualmente funciona como horizontal en la cara dominante.
+Commit:
 
-Durante ese mismo arrastre esos ejes **no cambian**, para evitar saltos o movimientos impredecibles a mitad del gesto.
+- `757e61656be252d7ff500b9dd4f5fb4fbc3dd527` — añade bloqueo de intención sin cambiar la geometría dinámica de la cámara.
 
-El movimiento se calcula siempre desde el estado inicial del gesto, no mediante acumulación incremental dependiente de la trayectoria. El siguiente gesto sí recalcula la referencia completa.
+Objetivo: permitir movimientos rectos cómodos aunque el dedo no trace una línea perfecta, sin quitar la posibilidad de hacer una diagonal deliberada.
 
-`rotation-orbit.js` intercepta el input real de un dedo para impedir que el motor antiguo de `size-engine.js` aplique simultáneamente su rotación fija de Frente. Los eventos sintéticos usados por los presets no se interceptan.
+### Clasificación
 
-### Dos dedos
+El sistema espera **7 px** de recorrido antes de decidir la intención. Esto evita clasificar el pequeño temblor inicial del dedo.
+
+Después compara las componentes horizontal y vertical con una relación de **1.6**:
+
+- si X domina claramente → modo `horizontal`;
+- si Y domina claramente → modo `vertical`;
+- si ninguna domina claramente → modo `diagonal`.
+
+La decisión se toma una sola vez y permanece durante todo ese arrastre.
+
+### Resultado
+
+- gesto casi vertical → la componente horizontal accidental se ignora por completo;
+- gesto casi horizontal → la componente vertical accidental se ignora por completo;
+- gesto realmente diagonal → conserva ambas componentes y sigue pudiendo rotar en dos direcciones a la vez.
+
+Esto modifica únicamente la lectura del dedo. La selección dinámica de la cara visible y de sus ejes permanece igual.
+
+## Dos dedos
 
 Se conserva el sistema de `view-layout.js`:
 
@@ -64,37 +75,33 @@ Se conserva el sistema de `view-layout.js`:
 - pinch → zoom;
 - twist deliberado después de la zona muerta existente → roll alrededor de Z de pantalla.
 
-El twist de dos dedos sigue siendo la forma explícita de ladear/girar el tablero en pantalla. Ese roll también entra en el análisis del siguiente gesto de un dedo, por lo que arriba/abajo/lados deben adaptarse a la nueva orientación visible.
+El twist también entra en el análisis del siguiente gesto de un dedo, por lo que la lógica de arriba/abajo/lados se adapta a la nueva orientación visible.
 
-## Nuevo significado de `0°`
+## Significado de `0°`
 
-La implementación anterior intentaba nivelar usando el eje vertical original del tablero, lo cual podía producir resultados visualmente absurdos después de rotaciones complejas.
+`0°` significa **Enderezar la cara/plano actualmente dominante**.
 
-Ahora `0°` significa:
-
-**Enderezar la cara/plano que actualmente está más de frente.**
+No intenta recuperar el eje vertical original ni regresar a `Frente`, `Diagonal`, `Atrás` o `Capas`.
 
 Proceso:
 
-1. detectar la misma cara dominante usada por el movimiento dinámico;
-2. proyectar sus dos bordes/ejes sobre la pantalla;
-3. para cada borde calcular qué rotación Z lo llevaría al múltiplo de 90° más cercano (`0/90/180/270`);
-4. escoger la corrección de menor magnitud;
-5. aplicar únicamente esa rotación alrededor de Z de pantalla.
+1. detectar la cara/plano más frontal;
+2. proyectar sus dos ejes en pantalla;
+3. calcular para cada eje la corrección hacia el múltiplo de 90° más cercano;
+4. aplicar solo la corrección Z de menor magnitud.
 
-Por tanto `0°` ya no busca Frente, Diagonal ni una orientación global abstracta. Su intención visual es simple: **mantener el lado/inclinación actual y poner recta la cara que estás mirando**.
+La intención es mantener aproximadamente el mismo lado e inclinación y solamente poner recta la cara que se está mirando.
 
 ## Controles eliminados
 
-Los botones `↺` y `↻` de rotación de ejes fueron eliminados. No forman parte de la prueba actual.
+Los botones `↺` y `↻` permanecen eliminados.
 
 ## Arquitectura activa
 
 `size-engine.js`:
 
-- conserva las orientaciones base y los presets originales;
-- sigue siendo fuente de las transformaciones canónicas del cubo;
-- su arrastre real fijo queda bloqueado por la capa dinámica para no duplicar movimiento.
+- conserva orientaciones base y presets;
+- su arrastre fijo antiguo queda bloqueado durante input real para evitar doble rotación.
 
 `view-layout.js`:
 
@@ -102,38 +109,34 @@ Los botones `↺` y `↻` de rotación de ejes fueron eliminados. No forman part
 - pan;
 - zoom;
 - multitouch;
-- detección de twist;
-- botón visual `0°`.
+- twist;
+- botón `0°`.
 
 `rotation-orbit.js`:
 
-- capa exterior `.dynamic-axis-transform`;
+- `.dynamic-axis-transform`;
 - orientación manual mediante cuaternión;
-- selección dinámica de cara/ejes al comienzo de cada gesto;
+- selección dinámica de cara/ejes al inicio de cada gesto;
+- bloqueo de intención horizontal/vertical/diagonal;
 - twist de dos dedos;
-- nueva lógica de Enderezar;
-- reinicio de la capa manual al escoger una vista canónica o cambiar tamaño.
+- Enderezar;
+- reinicio de la capa manual al elegir una vista canónica o cambiar tamaño.
 
-Commit principal de esta prueba:
+Commits relevantes de esta dirección:
 
-- `085949ce3a1c9a964a10ae0f04cdaebbda59e2a3` — ejes dinámicos según la cara visible y nuevo Enderezar.
+- `085949ce3a1c9a964a10ae0f04cdaebbda59e2a3` — ejes dinámicos según cara visible + nuevo Enderezar;
+- `757e61656be252d7ff500b9dd4f5fb4fbc3dd527` — filtro de intención para movimientos rectos.
 
 ## Estado de aprobación
 
-**Pendiente de validación visual por el usuario.**
+La versión de ejes dinámicos fue considerada **bien en general** por el usuario. El filtro de intención es el último ajuste pendiente de validación.
 
-No considerar esta cámara definitiva todavía.
+No marcar todavía toda la cámara como cerrada hasta comprobar que:
 
-### Prueba recomendada
-
-1. elegir `Frente`;
-2. mover con un dedo y comprobar que el comportamiento inicial sigue siendo predecible;
-3. girar deliberadamente el tablero hasta que la cara/plano visible cambie de orientación;
-4. soltar;
-5. iniciar un nuevo gesto y comprobar que arriba/abajo/lados ahora siguen la orientación visual actual en vez de la Frente original;
-6. usar twist de dos dedos para dejar una cara girada aproximadamente 90° en pantalla;
-7. volver a usar un dedo y comprobar que su lógica se adapta;
-8. dejar la vista torcida y pulsar `0°`; debe enderezar la cara dominante hacia el múltiplo de 90° más cercano sin saltar a una vista canónica rara.
+1. un gesto vertical natural no introduce giro lateral;
+2. un gesto horizontal natural no introduce inclinación vertical;
+3. una diagonal deliberada sigue moviendo ambos ejes;
+4. la referencia dinámica continúa actualizándose correctamente entre gestos.
 
 ## Estado de las demás correcciones
 
