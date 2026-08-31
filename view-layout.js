@@ -56,12 +56,14 @@
     <button type="button" id="zoomOut" class="camera-btn" aria-label="Alejar" title="Alejar">−</button>
     <button type="button" id="zoomIn" class="camera-btn" aria-label="Acercar" title="Acercar">+</button>
     <button type="button" id="centerView" class="camera-btn camera-center" aria-label="Centrar" title="Centrar">◎</button>
+    <button type="button" id="levelView" class="camera-btn camera-level" aria-label="Nivelar" title="Nivelar">0°</button>
   `;
   stage.appendChild(cameraTools);
 
   const zoomOutBtn = cameraTools.querySelector('#zoomOut');
   const zoomInBtn = cameraTools.querySelector('#zoomIn');
   const centerBtn = cameraTools.querySelector('#centerView');
+  const levelBtn = cameraTools.querySelector('#levelView');
 
   let internalDrive = false;
   let manualStart = null;
@@ -73,6 +75,7 @@
   const ORIGINAL_BASE_Y = 32;
   const MIN_ZOOM = .72;
   const MAX_ZOOM = 1.6;
+  const TWIST_START_DEGREES = 4;
 
   function puzzleSize() {
     return cube.querySelectorAll('.plane').length || 3;
@@ -80,8 +83,8 @@
 
   function labels() {
     return document.documentElement.lang === 'en'
-      ? { layers: 'Layers', back: 'Back', zoomOut: 'Zoom out', zoomIn: 'Zoom in', center: 'Center' }
-      : { layers: 'Capas', back: 'Atrás', zoomOut: 'Alejar', zoomIn: 'Acercar', center: 'Centrar' };
+      ? { layers: 'Layers', back: 'Back', zoomOut: 'Zoom out', zoomIn: 'Zoom in', center: 'Center', level: 'Level' }
+      : { layers: 'Capas', back: 'Atrás', zoomOut: 'Alejar', zoomIn: 'Acercar', center: 'Centrar', level: 'Nivelar' };
   }
 
   function fixLabels() {
@@ -94,6 +97,8 @@
     zoomInBtn.title = t.zoomIn;
     centerBtn.setAttribute('aria-label', t.center);
     centerBtn.title = t.center;
+    levelBtn.setAttribute('aria-label', t.level);
+    levelBtn.title = t.level;
   }
 
   function movementBounds() {
@@ -137,6 +142,9 @@
   zoomOutBtn.addEventListener('click', () => setZoom(zoom - .12));
   zoomInBtn.addEventListener('click', () => setZoom(zoom + .12));
   centerBtn.addEventListener('click', () => centerCamera(false));
+  levelBtn.addEventListener('click', () => {
+    document.dispatchEvent(new CustomEvent('queens:levelview'));
+  });
 
   stage.addEventListener('wheel', e => {
     e.preventDefault();
@@ -144,7 +152,7 @@
     setZoom(zoom * factor, e.clientX, e.clientY);
   }, { passive: false });
 
-  // Mouse/trackpad pan: Shift + drag. Touch: two-finger pan + pinch zoom.
+  // Mouse/trackpad pan: Shift + drag. Touch: two-finger pan + pinch zoom + twist.
   const touchPoints = new Map();
   let multiGesture = false;
   let multiStart = null;
@@ -156,6 +164,15 @@
   function distance(a, b) {
     return Math.hypot(a.x - b.x, a.y - b.y);
   }
+  function touchAngle(a, b) {
+    return Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
+  }
+  function normalizeAngle(value) {
+    let next = value % 360;
+    if (next > 180) next -= 360;
+    if (next < -180) next += 360;
+    return next;
+  }
 
   stage.addEventListener('pointerdown', e => {
     if (internalDrive) return;
@@ -164,10 +181,15 @@
       touchPoints.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (touchPoints.size === 2) {
         const [a, b] = [...touchPoints.values()];
+        const angle = touchAngle(a, b);
         multiGesture = true;
+        manualStart = null;
         multiStart = {
           mid: midpoint(a, b),
           dist: Math.max(1, distance(a, b)),
+          angle,
+          lastAngle: angle,
+          twisting: false,
           panX,
           panY,
           zoom
@@ -197,10 +219,25 @@
         const [a, b] = [...touchPoints.values()].slice(0, 2);
         const mid = midpoint(a, b);
         const dist = Math.max(1, distance(a, b));
+        const angle = touchAngle(a, b);
+
         zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, multiStart.zoom * (dist / multiStart.dist)));
         panX = multiStart.panX + (mid.x - multiStart.mid.x);
         panY = multiStart.panY + (mid.y - multiStart.mid.y);
         applyCamera();
+
+        const totalTwist = normalizeAngle(angle - multiStart.angle);
+        if (!multiStart.twisting && Math.abs(totalTwist) >= TWIST_START_DEGREES) {
+          multiStart.twisting = true;
+          multiStart.lastAngle = angle;
+        } else if (multiStart.twisting) {
+          const delta = normalizeAngle(angle - multiStart.lastAngle);
+          multiStart.lastAngle = angle;
+          if (Math.abs(delta) > .01) {
+            document.dispatchEvent(new CustomEvent('queens:twist', {detail:{degrees:delta}}));
+          }
+        }
+
         e.preventDefault();
         e.stopImmediatePropagation();
       } else if (multiGesture) {
