@@ -96,6 +96,10 @@
 .camera-center{
   font-size:19px;
 }
+.camera-level{
+  font-size:14px;
+  letter-spacing:-.03em;
+}
 
 /* Inactive boards remain readable enough to anchor their pieces. */
 .stage.view-original .plane.inactive,
