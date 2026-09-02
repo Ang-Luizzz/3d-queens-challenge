@@ -48,7 +48,7 @@
   font-size:8px;
 }
 
-/* Verification returns below the viewport. */
+/* Verification returns below the viewport and the camera toolbar. */
 .actionbar{
   margin-top:10px !important;
 }
@@ -68,37 +68,71 @@
   transition:transform .12s ease-out;
 }
 
+/* Camera controls are intentionally outside the 3D interaction area. */
 .camera-tools{
-  position:absolute;
-  z-index:40;
-  right:10px;
-  top:10px;
+  position:relative;
+  inset:auto;
+  z-index:1;
+  width:100%;
   display:flex;
-  flex-direction:column;
-  gap:6px;
+  flex-direction:row;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  margin-top:8px;
+  padding:7px;
+  border:1px solid var(--border);
+  border-radius:14px;
+  background:rgba(255,255,255,.018);
+  box-shadow:none;
+  backdrop-filter:none;
 }
 .camera-btn{
-  width:42px;
   height:42px;
+  min-height:42px;
   border:1px solid var(--border);
-  border-radius:11px;
-  background:rgba(8,17,31,.84);
+  border-radius:10px;
+  background:rgba(8,17,31,.72);
   color:#f7f9ff;
-  font-size:21px;
   font-weight:850;
   line-height:1;
-  box-shadow:0 5px 16px rgba(0,0,0,.18);
-  backdrop-filter:blur(7px);
+  box-shadow:none;
 }
 .camera-btn:active{
   background:rgba(109,140,255,.20);
 }
-.camera-center{
-  font-size:19px;
+#zoomOut,
+#zoomIn{
+  flex:0 0 42px;
+  width:42px;
+  padding:0;
+  font-size:21px;
 }
-.camera-level{
-  font-size:14px;
-  letter-spacing:-.03em;
+.camera-action{
+  flex:1 1 120px;
+  width:auto;
+  max-width:170px;
+  min-width:0;
+  padding:0 13px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  font-size:12px;
+  white-space:nowrap;
+}
+.camera-action-icon{
+  flex:0 0 auto;
+  font-size:16px;
+  line-height:1;
+  opacity:.9;
+}
+.camera-straighten-icon{
+  font-size:17px;
+}
+.camera-action-label{
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 
 /* Inactive boards remain readable enough to anchor their pieces. */
@@ -131,11 +165,26 @@
     font-size:10px;
   }
   .camera-tools{
-    right:8px;
-    top:8px;
+    gap:5px;
+    margin-top:7px;
+    padding:6px;
   }
   .camera-btn{
-    width:40px;
     height:40px;
+    min-height:40px;
+  }
+  #zoomOut,
+  #zoomIn{
+    flex-basis:38px;
+    width:38px;
+  }
+  .camera-action{
+    flex-basis:105px;
+    padding:0 8px;
+    gap:5px;
+    font-size:10.5px;
+  }
+  .camera-action-icon{
+    font-size:14px;
   }
 }
