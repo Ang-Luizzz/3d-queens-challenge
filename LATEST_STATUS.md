@@ -2,7 +2,7 @@
 
 > Este archivo registra cambios posteriores a `CURRENT_HANDOFF.md`. Mientras exista, debe leerse **antes** de `CURRENT_HANDOFF.md` y `PROJECT_STATE.md`.
 >
-> Última actualización: 2026-08-31.
+> Última actualización: 2026-09-01.
 
 ## Estado actual de la cámara
 
@@ -77,9 +77,9 @@ Se conserva el sistema de `view-layout.js`:
 
 El twist también entra en el análisis del siguiente gesto de un dedo, por lo que la lógica de arriba/abajo/lados se adapta a la nueva orientación visible.
 
-## Significado de `0°`
+## Significado de Enderezar
 
-`0°` significa **Enderezar la cara/plano actualmente dominante**.
+La función que antes se mostraba como `0°` significa **Enderezar la cara/plano actualmente dominante**.
 
 No intenta recuperar el eje vertical original ni regresar a `Frente`, `Diagonal`, `Atrás` o `Capas`.
 
@@ -91,6 +91,26 @@ Proceso:
 4. aplicar solo la corrección Z de menor magnitud.
 
 La intención es mantener aproximadamente el mismo lado e inclinación y solamente poner recta la cara que se está mirando.
+
+## Barra de cámara fuera del visor
+
+Los controles de cámara dejaron de flotar encima del tablero 3D porque ocupaban visualmente el espacio de interacción y `0°` no explicaba su función.
+
+Nueva presentación:
+
+- la barra se mueve al flujo normal **debajo del visor y antes del verificador**;
+- `−` y `+` conservan su lectura directa de zoom;
+- `◎` ahora aparece acompañado por el texto **Centrar / Center**;
+- la antigua etiqueta `0°` se reemplaza visualmente por **Enderezar / Straighten**;
+- la lógica interna de cámara no cambia: solo se cambia ubicación, texto y estilo;
+- `camera-toolbar.js` mueve los controles ya creados por `view-layout.js`, por lo que conserva sus mismos listeners y comportamiento;
+- `rotation-orbit.js` sigue cargándose después y mantiene la propiedad de la rotación.
+
+Commits de este ajuste visual:
+
+- `dd734fbfa0a53f2f3d9e82b96c107a3b86b7dbbc` — crea `camera-toolbar.js` y mueve/renombra los controles;
+- `34720dcc8e0053e71d9b4e6cdbc42c4764a74195` — convierte los controles en barra horizontal externa;
+- `3f05c58d09e7cf12b5ab9e79898764bc0f65df82` — carga la barra antes de `rotation-orbit.js`.
 
 ## Controles eliminados
 
@@ -110,7 +130,14 @@ Los botones `↺` y `↻` permanecen eliminados.
 - zoom;
 - multitouch;
 - twist;
-- botón `0°`.
+- crea originalmente los botones de cámara.
+
+`camera-toolbar.js`:
+
+- mueve los botones fuera del `stage`;
+- los coloca debajo del visor y antes del verificador;
+- presenta `Centrar / Center` y `Enderezar / Straighten` de forma explícita;
+- no modifica la matemática de cámara.
 
 `rotation-orbit.js`:
 
@@ -129,14 +156,15 @@ Commits relevantes de esta dirección:
 
 ## Estado de aprobación
 
-La versión de ejes dinámicos fue considerada **bien en general** por el usuario. El filtro de intención es el último ajuste pendiente de validación.
+La versión de ejes dinámicos fue considerada **bien en general** por el usuario. El filtro de intención y la nueva barra externa son los últimos ajustes pendientes de validación visual.
 
 No marcar todavía toda la cámara como cerrada hasta comprobar que:
 
 1. un gesto vertical natural no introduce giro lateral;
 2. un gesto horizontal natural no introduce inclinación vertical;
 3. una diagonal deliberada sigue moviendo ambos ejes;
-4. la referencia dinámica continúa actualizándose correctamente entre gestos.
+4. la referencia dinámica continúa actualizándose correctamente entre gestos;
+5. la barra externa se entiende mejor y no invade el espacio del tablero.
 
 ## Estado de las demás correcciones
 
